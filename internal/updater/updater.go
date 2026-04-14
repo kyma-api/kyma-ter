@@ -1,0 +1,143 @@
+package updater
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+)
+
+const (
+	versionURL = "https://raw.githubusercontent.com/sonpiaz/kyma-releases/main/ter-latest.txt"
+	downloadFmt = "https://github.com/sonpiaz/kyma-releases/releases/download/ter-v%s/kyma-ter-%s-%s"
+)
+
+func kymaDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".kyma", "ter")
+}
+
+func binPath() string    { return filepath.Join(kymaDir(), "bin", "kyma-ter") }
+func newBinPath() string { return filepath.Join(kymaDir(), "bin", "kyma-ter.new") }
+func versionPath() string { return filepath.Join(kymaDir(), "version") }
+
+// ApplyPending swaps in a previously downloaded update.
+// Call this early in startup, before the server starts.
+func ApplyPending() {
+	newBin := newBinPath()
+	if _, err := os.Stat(newBin); err != nil {
+		return
+	}
+
+	bin := binPath()
+	old := bin + ".old"
+
+	// Rename current → .old, new → current
+	_ = os.Remove(old)
+	if err := os.Rename(bin, old); err != nil {
+		_ = os.Remove(newBin)
+		return
+	}
+	if err := os.Rename(newBin, bin); err != nil {
+		// Rollback
+		_ = os.Rename(old, bin)
+		return
+	}
+	_ = os.Remove(old)
+}
+
+// CheckInBackground checks for a newer version and downloads it.
+// The update is applied on next startup via ApplyPending.
+func CheckInBackground(currentVersion string) {
+	go func() {
+		if err := check(currentVersion); err != nil {
+			// Silent — don't disturb the user
+			_ = err
+		}
+	}()
+}
+
+func check(currentVersion string) error {
+	if currentVersion == "dev" {
+		return nil
+	}
+
+	latest, err := fetchLatestVersion()
+	if err != nil {
+		return err
+	}
+
+	if latest == currentVersion {
+		return nil
+	}
+
+	// Determine platform
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	if goarch == "amd64" {
+		// already correct
+	} else if goarch == "arm64" {
+		// already correct
+	} else {
+		return fmt.Errorf("unsupported arch: %s", goarch)
+	}
+
+	url := fmt.Sprintf(downloadFmt, latest, goos, goarch)
+	dest := newBinPath()
+
+	if err := downloadBinary(url, dest); err != nil {
+		_ = os.Remove(dest)
+		return err
+	}
+
+	// Write the new version so postinstall stays in sync
+	_ = os.WriteFile(versionPath(), []byte(latest), 0644)
+
+	return nil
+}
+
+func fetchLatestVersion() (string, error) {
+	resp, err := http.Get(versionURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("version check: HTTP %d", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 64))
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(data)), nil
+}
+
+func downloadBinary(url, dest string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("download: HTTP %d", resp.StatusCode)
+	}
+
+	dir := filepath.Dir(dest)
+	_ = os.MkdirAll(dir, 0755)
+
+	f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, resp.Body)
+	return err
+}
