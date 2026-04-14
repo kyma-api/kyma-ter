@@ -76,6 +76,67 @@ export function removeNode(tree: LayoutNode, targetNodeId: string): LayoutNode |
   };
 }
 
+export type DropZone = "left" | "right" | "top" | "bottom" | "center";
+
+// Split a leaf with control over insertion order (before = left/top, after = right/bottom)
+export function splitNodeAtPosition(
+  tree: LayoutNode,
+  targetNodeId: string,
+  direction: "horizontal" | "vertical",
+  newPaneId: string,
+  position: "before" | "after"
+): LayoutNode {
+  return mapNode(tree, targetNodeId, (node) => {
+    const newLeaf = createLeaf(newPaneId);
+    const children = position === "before"
+      ? [newLeaf, node]
+      : [node, newLeaf];
+    return {
+      id: nextNodeId(),
+      type: "container" as const,
+      direction,
+      children,
+      sizes: [50, 50],
+    };
+  });
+}
+
+// Move a pane from one position to another based on drop zone
+export function moveNode(
+  tree: LayoutNode,
+  sourcePaneId: string,
+  targetPaneId: string,
+  zone: DropZone
+): LayoutNode {
+  if (sourcePaneId === targetPaneId) return tree;
+
+  if (zone === "center") {
+    const nodeA = findNodeByPaneId(tree, sourcePaneId);
+    const nodeB = findNodeByPaneId(tree, targetPaneId);
+    if (!nodeA || !nodeB) return tree;
+    return swapNodes(tree, nodeA, nodeB);
+  }
+
+  // 1. Remove source leaf from tree
+  const sourceNodeId = findNodeByPaneId(tree, sourcePaneId);
+  if (!sourceNodeId) return tree;
+  const treeAfterRemove = removeNode(tree, sourceNodeId);
+  if (!treeAfterRemove) return tree;
+
+  // 2. Find target in the new tree (nodeId may have changed due to collapse)
+  const newTargetNodeId = findNodeByPaneId(treeAfterRemove, targetPaneId);
+  if (!newTargetNodeId) return tree;
+
+  // 3. Map zone to direction + position
+  const direction: "horizontal" | "vertical" =
+    (zone === "left" || zone === "right") ? "horizontal" : "vertical";
+  const position: "before" | "after" =
+    (zone === "left" || zone === "top") ? "before" : "after";
+
+  // 4. Split target, inserting source's paneId at the correct position
+  return splitNodeAtPosition(treeAfterRemove, newTargetNodeId, direction, sourcePaneId, position);
+}
+
 // Swap two leaf nodes
 export function swapNodes(tree: LayoutNode, idA: string, idB: string): LayoutNode {
   // Find paneIds for both nodes
@@ -134,6 +195,52 @@ export function findAdjacentLeaf(
   } else {
     return leaves[(idx - 1 + leaves.length) % leaves.length] ?? null;
   }
+}
+
+// Build a grid layout from a list of paneIds arranged in cols x rows
+export function createGridLayout(paneIds: string[], cols: number, rows: number): LayoutNode {
+  if (paneIds.length === 1) return createLeaf(paneIds[0]);
+
+  if (rows === 1) {
+    // Single row: horizontal container
+    const children = paneIds.map((id) => createLeaf(id));
+    const equalSize = 100 / children.length;
+    return {
+      id: nextNodeId(),
+      type: "container",
+      direction: "horizontal",
+      children,
+      sizes: children.map(() => equalSize),
+    };
+  }
+
+  // Multiple rows: vertical container of horizontal rows
+  const rowNodes: LayoutNode[] = [];
+  for (let r = 0; r < rows; r++) {
+    const rowPanes = paneIds.slice(r * cols, (r + 1) * cols);
+    if (rowPanes.length === 1) {
+      rowNodes.push(createLeaf(rowPanes[0]));
+    } else {
+      const children = rowPanes.map((id) => createLeaf(id));
+      const equalSize = 100 / children.length;
+      rowNodes.push({
+        id: nextNodeId(),
+        type: "container",
+        direction: "horizontal",
+        children,
+        sizes: children.map(() => equalSize),
+      });
+    }
+  }
+
+  const equalRowSize = 100 / rowNodes.length;
+  return {
+    id: nextNodeId(),
+    type: "container",
+    direction: "vertical",
+    children: rowNodes,
+    sizes: rowNodes.map(() => equalRowSize),
+  };
 }
 
 // --- Internal helpers ---

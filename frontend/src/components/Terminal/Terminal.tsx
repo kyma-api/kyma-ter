@@ -1,8 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useTerminal } from "./useTerminal";
 import { getAgentInfo } from "../../types";
 import { useTasksStore } from "../../store/tasks";
 import { useLocksStore } from "../../store/locks";
+import { DropZoneOverlay } from "./DropZoneOverlay";
+import type { DropZone } from "../../utils/layoutTree";
 import "@xterm/xterm/css/xterm.css";
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
@@ -15,12 +17,18 @@ const STATUS_LABELS: Record<string, { label: string; className: string }> = {
 interface TerminalProps {
   sessionId: string;
   agentKey: string;
+  paneId?: string;
+  focused?: boolean;
+  singlePane?: boolean;
   onClose?: () => void;
-  onSplit?: (direction: "horizontal" | "vertical") => void;
+  onMoveDrop?: (draggedPaneId: string, zone: DropZone) => void;
+  onFocus?: () => void;
 }
 
-export function TerminalPane({ sessionId, agentKey, onClose, onSplit }: TerminalProps) {
+export function TerminalPane({ sessionId, agentKey, paneId, focused, singlePane, onClose, onMoveDrop, onFocus }: TerminalProps) {
   const agent = getAgentInfo(agentKey);
+  const [dragOver, setDragOver] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const task = useTasksStore((s) =>
     s.tasks.find((t) => t.session_id === sessionId)
   );
@@ -29,22 +37,55 @@ export function TerminalPane({ sessionId, agentKey, onClose, onSplit }: Terminal
   );
 
   const handleExit = useCallback(
-    (_exitCode: number) => {
-      // Could auto-close or show restart button
-    },
+    (_exitCode: number) => {},
     []
   );
 
-  const { containerRef } = useTerminal({
+  const { containerRef, termRef } = useTerminal({
     sessionId,
     onExit: handleExit,
   });
 
+  // Auto-focus xterm when this pane becomes focused
+  useEffect(() => {
+    if (focused && termRef.current) {
+      termRef.current.focus();
+    }
+  }, [focused, termRef]);
+
   const statusInfo = task ? STATUS_LABELS[task.status] : null;
 
+  const paneClasses = [
+    "terminal-pane",
+    dragging ? "dragging" : "",
+    focused && !singlePane ? "focused" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="terminal-pane">
-      <div className="terminal-header">
+    <div
+      className={paneClasses}
+      onDragEnter={(e) => {
+        if (e.dataTransfer.types.includes("text/pane-id")) {
+          setDragOver(true);
+        }
+      }}
+      onMouseDown={onFocus}
+    >
+      <div
+        className="terminal-header"
+        draggable
+        onDragStart={(e) => {
+          if (paneId) {
+            e.dataTransfer.setData("text/pane-id", paneId);
+            e.dataTransfer.effectAllowed = "move";
+            setDragging(true);
+          }
+        }}
+        onDragEnd={() => {
+          setDragging(false);
+          setDragOver(false);
+        }}
+      >
         <div className="terminal-header-left">
           <span className="agent-dot" style={{ backgroundColor: agent.color }} />
           <span className="agent-name">{agent.name || "Shell"}</span>
@@ -73,16 +114,6 @@ export function TerminalPane({ sessionId, agentKey, onClose, onSplit }: Terminal
               L {lockCount}
             </span>
           )}
-          {onSplit && (
-            <>
-              <button className="split-btn" onClick={() => onSplit("horizontal")} title="Split Right">
-                &#x2503;
-              </button>
-              <button className="split-btn" onClick={() => onSplit("vertical")} title="Split Down">
-                &#x2501;
-              </button>
-            </>
-          )}
           {onClose && (
             <button className="close-btn" onClick={onClose} title="Close">
               &times;
@@ -91,6 +122,13 @@ export function TerminalPane({ sessionId, agentKey, onClose, onSplit }: Terminal
         </div>
       </div>
       <div ref={containerRef} className="terminal-container" />
+      {dragOver && paneId && onMoveDrop && (
+        <DropZoneOverlay
+          targetPaneId={paneId}
+          onMoveDrop={onMoveDrop}
+          onDragLeave={() => setDragOver(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,16 +1,19 @@
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from "react-resizable-panels";
 import { TerminalPane } from "../Terminal/Terminal";
-import type { LayoutNode } from "../../utils/layoutTree";
+import type { LayoutNode, DropZone } from "../../utils/layoutTree";
 import type { Pane } from "../../store/ui";
 
 interface LayoutContainerProps {
   node: LayoutNode;
   panes: Record<string, Pane>;
+  focusedPaneId: string | null;
+  singlePane: boolean;
   onClosePane: (paneId: string) => void;
-  onSplitPane: (paneId: string, direction: "horizontal" | "vertical") => void;
+  onMovePane: (sourcePaneId: string, targetPaneId: string, zone: DropZone) => void;
+  onFocusPane: (paneId: string) => void;
 }
 
-export function LayoutContainer({ node, panes, onClosePane, onSplitPane }: LayoutContainerProps) {
+export function LayoutContainer({ node, panes, focusedPaneId, singlePane, onClosePane, onMovePane, onFocusPane }: LayoutContainerProps) {
   if (node.type === "leaf") {
     const pane = node.paneId ? panes[node.paneId] : undefined;
     if (!pane) return null;
@@ -18,8 +21,12 @@ export function LayoutContainer({ node, panes, onClosePane, onSplitPane }: Layou
       <TerminalPane
         sessionId={pane.sessionId}
         agentKey={pane.agentKey}
+        paneId={pane.id}
+        focused={focusedPaneId === pane.id}
+        singlePane={singlePane}
         onClose={() => onClosePane(pane.id)}
-        onSplit={(dir) => onSplitPane(pane.id, dir)}
+        onMoveDrop={(draggedPaneId, zone) => onMovePane(draggedPaneId, pane.id, zone)}
+        onFocus={() => onFocusPane(pane.id)}
       />
     );
   }
@@ -44,8 +51,11 @@ export function LayoutContainer({ node, panes, onClosePane, onSplitPane }: Layou
         <LayoutContainer
           node={children[i]}
           panes={panes}
+          focusedPaneId={focusedPaneId}
+          singlePane={singlePane}
           onClosePane={onClosePane}
-          onSplitPane={onSplitPane}
+          onMovePane={onMovePane}
+          onFocusPane={onFocusPane}
         />
       </Panel>
     );

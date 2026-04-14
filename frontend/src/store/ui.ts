@@ -3,10 +3,14 @@ import { persist } from "zustand/middleware";
 import { getAgentInfo } from "../types";
 import {
   type LayoutNode,
+  type DropZone,
   createLeaf,
   splitNode,
   removeNode,
+  swapNodes,
+  moveNode,
   getLeafPaneIds,
+  createGridLayout,
   resetNodeCounter,
 } from "../utils/layoutTree";
 
@@ -43,6 +47,8 @@ interface UIState {
   activeTabId: string;
   tasksPanelOpen: boolean;
   focusedPaneId: string | null;
+  agentWorkspaceOpen: boolean;
+  settingsOpen: boolean;
 
   addTab: (name?: string) => string;
   removeTab: (id: string) => void;
@@ -50,12 +56,17 @@ interface UIState {
   toggleTasksPanel: () => void;
   renameTab: (id: string, name: string) => void;
   setFocusedPane: (id: string | null) => void;
+  setAgentWorkspaceOpen: (open: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
   nextTab: () => void;
   prevTab: () => void;
 
   addPane: (tabId: string, sessionId: string, agentKey: string) => void;
   removePane: (tabId: string, paneId: string) => void;
   splitPane: (tabId: string, paneId: string, direction: "horizontal" | "vertical", sessionId: string, agentKey: string) => void;
+  swapPanes: (tabId: string, paneIdA: string, paneIdB: string) => void;
+  movePane: (tabId: string, sourcePaneId: string, targetPaneId: string, zone: DropZone) => void;
+  launchWorkspace: (tabId: string, panes: Array<{ sessionId: string; agentKey: string }>, cols: number, rows: number) => void;
 
   restoreFromSessions: (runningSessions: Array<{ id: string; agent_key: string }>) => void;
   getAllSessionIds: () => string[];
@@ -75,6 +86,8 @@ export const useUIStore = create<UIState>()(
       activeTabId: "tab-0",
       tasksPanelOpen: false,
       focusedPaneId: null,
+      agentWorkspaceOpen: false,
+      settingsOpen: false,
 
       addTab: (name?: string) => {
         tabCounter++;
@@ -100,6 +113,8 @@ export const useUIStore = create<UIState>()(
       setActiveTab: (id: string) => set({ activeTabId: id }),
       toggleTasksPanel: () => set((s) => ({ tasksPanelOpen: !s.tasksPanelOpen })),
       setFocusedPane: (id: string | null) => set({ focusedPaneId: id }),
+      setAgentWorkspaceOpen: (open: boolean) => set({ agentWorkspaceOpen: open }),
+      setSettingsOpen: (open: boolean) => set({ settingsOpen: open }),
 
       nextTab: () => {
         set((s) => {
@@ -133,24 +148,20 @@ export const useUIStore = create<UIState>()(
           tabs: s.tabs.map((t) => {
             if (t.id !== tabId) return t;
             const newPanes = { ...t.panes, [paneId]: pane };
+            const allPaneIds = Object.keys(newPanes);
+            const totalPanes = allPaneIds.length;
+
             let newLayout: LayoutNode;
             if (!t.layout) {
-              // First pane: create leaf
               newLayout = createLeaf(paneId);
-            } else if (t.layout.type === "leaf") {
-              // Second pane: split horizontally
-              newLayout = splitNode(t.layout, t.layout.id, "horizontal", paneId);
+            } else if (totalPanes <= 3) {
+              // Up to 3 panes: single horizontal row
+              newLayout = createGridLayout(allPaneIds, totalPanes, 1);
             } else {
-              // 3+ panes: split the last leaf horizontally
-              const leafIds = getLeafPaneIds(t.layout);
-              const lastLeafPaneId = leafIds[leafIds.length - 1];
-              // Find the node ID of the last leaf
-              const lastNodeId = findLeafNodeId(t.layout, lastLeafPaneId);
-              if (lastNodeId) {
-                newLayout = splitNode(t.layout, lastNodeId, "horizontal", paneId);
-              } else {
-                newLayout = splitNode(t.layout, t.layout.id, "horizontal", paneId);
-              }
+              // 4+ panes: auto-wrap into grid (max 3 cols)
+              const cols = Math.min(totalPanes, 3);
+              const rows = Math.ceil(totalPanes / cols);
+              newLayout = createGridLayout(allPaneIds, cols, rows);
             }
             const paneArr = Object.values(newPanes);
             return {
@@ -160,6 +171,7 @@ export const useUIStore = create<UIState>()(
               name: t.customName ? t.name : deriveTabName(paneArr),
             };
           }),
+          focusedPaneId: paneId,
         }));
       },
 
@@ -200,6 +212,58 @@ export const useUIStore = create<UIState>()(
               name: t.customName ? t.name : deriveTabName(paneArr),
             };
           }),
+        }));
+      },
+
+      swapPanes: (tabId, paneIdA, paneIdB) => {
+        if (paneIdA === paneIdB) return;
+        set((s) => ({
+          tabs: s.tabs.map((t) => {
+            if (t.id !== tabId || !t.layout) return t;
+            const nodeIdA = findLeafNodeId(t.layout, paneIdA);
+            const nodeIdB = findLeafNodeId(t.layout, paneIdB);
+            if (!nodeIdA || !nodeIdB) return t;
+            return { ...t, layout: swapNodes(t.layout, nodeIdA, nodeIdB) };
+          }),
+        }));
+      },
+
+      movePane: (tabId, sourcePaneId, targetPaneId, zone) => {
+        if (sourcePaneId === targetPaneId) return;
+        set((s) => ({
+          tabs: s.tabs.map((t) => {
+            if (t.id !== tabId || !t.layout) return t;
+            const newLayout = moveNode(t.layout, sourcePaneId, targetPaneId, zone);
+            return { ...t, layout: newLayout };
+          }),
+        }));
+      },
+
+      launchWorkspace: (tabId, panes, cols, rows) => {
+        const paneMap: Record<string, Pane> = {};
+        const paneIds: string[] = [];
+        for (const p of panes) {
+          paneCounter++;
+          const paneId = `pane-${paneCounter}`;
+          paneMap[paneId] = { id: paneId, sessionId: p.sessionId, agentKey: p.agentKey };
+          paneIds.push(paneId);
+        }
+        const layout = createGridLayout(paneIds, cols, rows);
+        set((s) => ({
+          tabs: s.tabs.map((t) => {
+            if (t.id !== tabId) return t;
+            // Merge with existing panes if any
+            const allPanes = { ...t.panes, ...paneMap };
+            const paneArr = Object.values(allPanes);
+            // Always use the new grid layout for workspace launch
+            return {
+              ...t,
+              layout,
+              panes: allPanes,
+              name: t.customName ? t.name : deriveTabName(paneArr),
+            };
+          }),
+          focusedPaneId: paneIds[0] ?? null,
         }));
       },
 

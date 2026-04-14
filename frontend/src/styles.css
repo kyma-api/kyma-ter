@@ -380,6 +380,56 @@ body,
   flex-direction: column;
   height: 100%;
   background: var(--bg);
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 4px;
+}
+
+.terminal-pane.focused {
+  border-color: var(--accent);
+}
+
+.terminal-pane.dragging {
+  opacity: 0.5;
+}
+
+/* Drop zone overlay */
+.drop-zone-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+}
+
+.drop-zone-highlight {
+  position: absolute;
+  background: rgba(34, 197, 94, 0.15);
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.drop-zone-highlight[data-zone="left"]   { left: 0; top: 0; width: 50%; height: 100%; }
+.drop-zone-highlight[data-zone="right"]  { left: 50%; top: 0; width: 50%; height: 100%; }
+.drop-zone-highlight[data-zone="top"]    { left: 0; top: 0; width: 100%; height: 50%; }
+.drop-zone-highlight[data-zone="bottom"] { left: 0; top: 50%; width: 100%; height: 50%; }
+.drop-zone-highlight[data-zone="center"] { left: 10%; top: 10%; width: 80%; height: 80%; }
+
+.drop-zone-swap-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.terminal-header[draggable="true"] {
+  cursor: grab;
+}
+
+.terminal-header[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .terminal-header {
@@ -1157,12 +1207,367 @@ body,
   gap: 8px;
 }
 
-.empty-icon {
-  font-size: 48px;
-  opacity: 0.3;
+.empty-ascii {
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0 0 32px 0;
+  background: linear-gradient(180deg, #D4A017 0%, #FFD700 40%, #FFFFFF 60%, #FFD700 80%, #D4A017 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  user-select: none;
 }
 
-.empty-hint {
+.empty-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.empty-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.empty-pill-terminal:hover {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--accent);
+}
+
+.empty-pill-agent:hover {
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.08);
+  color: #eab308;
+}
+
+.empty-hint-keys {
+  margin-top: 24px;
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* ── Sidebar spacer ──────────────────────────────────────────────────── */
+.sidebar-spacer {
+  flex: 1;
+}
+
+/* ── Agent Workspace Modal ───────────────────────────────────────────── */
+.workspace-modal {
+  width: 620px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.workspace-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workspace-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.layout-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  background: var(--bg);
+}
+
+.layout-card:hover {
+  border-color: #52525b;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.layout-card.selected {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.layout-preview {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  max-width: 80px;
+  aspect-ratio: 1.4;
+}
+
+.layout-dot {
+  background: #eab308;
+  border-radius: 4px;
+  opacity: 0.7;
+  min-height: 12px;
+}
+
+.layout-card.selected .layout-dot {
+  opacity: 1;
+}
+
+.layout-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.layout-count {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.agents-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.agent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-row-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 50px;
+}
+
+.agent-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.agent-select {
+  flex: 1;
+  padding: 5px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.agent-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.agent-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.workspace-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.workspace-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+}
+
+.workspace-btn:hover {
+  background: var(--bg-hover);
+}
+
+.workspace-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+}
+
+.workspace-btn.primary:hover {
+  background: #4ade80;
+}
+
+.workspace-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Settings Modal ──────────────────────────────────────────────────── */
+.settings-modal {
+  width: 480px;
+  max-width: 95vw;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.settings-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.1s;
+}
+
+.shortcut-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.shortcut-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.shortcut-badge {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  min-width: 100px;
+  text-align: center;
+}
+
+.shortcut-badge:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.shortcut-badge.recording {
+  border-color: #eab308;
+  color: #eab308;
+  animation: pulse-border 1s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: #eab308; }
+  50% { border-color: transparent; }
+}
+
+.shortcut-conflict {
+  font-size: 12px;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shortcut-conflict-btn {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.shortcut-conflict-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.settings-reset-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: all 0.15s;
+}
+
+.settings-reset-btn:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
 }

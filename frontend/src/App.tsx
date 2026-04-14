@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TabBar } from "./components/Layout/TabBar";
 import { Sidebar } from "./components/Layout/Sidebar";
 import { PaneGrid } from "./components/Layout/PaneGrid";
 import { StatusBar } from "./components/Layout/StatusBar";
-import { KanbanBoard } from "./components/Kanban/KanbanBoard";
+import { SetupModal } from "./components/Setup/SetupModal";
+import { AgentWorkspaceModal } from "./components/AgentWorkspace/AgentWorkspaceModal";
+import { SettingsModal } from "./components/Settings/SettingsModal";
+import { spawnShell, spawnKymaIfReady, spawnAgent } from "./utils/spawn";
 import { useSessionsStore } from "./store/sessions";
 import { useTasksStore } from "./store/tasks";
 import { useLocksStore } from "./store/locks";
@@ -13,9 +16,9 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 function TerminalView() {
   const activeTab = useActiveTab();
-  const { removePane, splitPane } = useUIStore();
-  const createSession = useSessionsStore((s) => s.createSession);
+  const { removePane, movePane, focusedPaneId, setFocusedPane, activeTabId } = useUIStore();
   const deleteSession = useSessionsStore((s) => s.deleteSession);
+  const [showSetup, setShowSetup] = useState(false);
 
   const handleClosePane = async (paneId: string) => {
     if (!activeTab) return;
@@ -30,15 +33,6 @@ function TerminalView() {
     removePane(activeTab.id, paneId);
   };
 
-  const handleSplitPane = async (paneId: string, direction: "horizontal" | "vertical") => {
-    if (!activeTab) return;
-    const pane = activeTab.panes[paneId];
-    if (!pane) return;
-    // Spawn a new session with the same agent type
-    const sessionId = await createSession(pane.agentKey);
-    splitPane(activeTab.id, paneId, direction, sessionId, pane.agentKey);
-  };
-
   if (!activeTab) return null;
 
   return (
@@ -46,10 +40,23 @@ function TerminalView() {
       <div className="pane-area">
         <PaneGrid
           tab={activeTab}
+          focusedPaneId={focusedPaneId}
           onClosePane={handleClosePane}
-          onSplitPane={handleSplitPane}
+          onMovePane={(source, target, zone) => movePane(activeTab.id, source, target, zone)}
+          onFocusPane={setFocusedPane}
+          onNewTerminal={() => spawnShell(activeTabId)}
+          onNewAgent={() => spawnKymaIfReady(activeTabId, () => setShowSetup(true))}
         />
       </div>
+      {showSetup && (
+        <SetupModal
+          onComplete={() => {
+            setShowSetup(false);
+            spawnAgent("kyma", activeTabId);
+          }}
+          onCancel={() => setShowSetup(false)}
+        />
+      )}
     </div>
   );
 }
@@ -59,15 +66,9 @@ export default function App() {
   const fetchTasks = useTasksStore((s) => s.fetch);
   const fetchLocks = useLocksStore((s) => s.fetch);
   const connectEvents = useEventsStore((s) => s.connect);
-  const tasksPanelOpen = useUIStore((s) => s.tasksPanelOpen);
   const restored = useRef(false);
-  const [plusDropdownOpen, setPlusDropdownOpen] = useState(false);
 
-  const togglePlusDropdown = useCallback(() => {
-    setPlusDropdownOpen((v) => !v);
-  }, []);
-
-  useKeyboardShortcuts({ onTogglePlusDropdown: togglePlusDropdown });
+  useKeyboardShortcuts();
 
   // Initialize: fetch data, connect events, restore persisted layout
   useEffect(() => {
@@ -113,35 +114,29 @@ export default function App() {
     };
   }, []);
 
+  const agentWorkspaceOpen = useUIStore((s) => s.agentWorkspaceOpen);
+  const settingsOpen = useUIStore((s) => s.settingsOpen);
+  const activeTabId = useUIStore((s) => s.activeTabId);
+
   return (
     <div className="app">
-      <TabBar
-        plusDropdownOpen={plusDropdownOpen}
-        setPlusDropdownOpen={setPlusDropdownOpen}
-      />
+      <TabBar />
       <div className="app-body">
+        <Sidebar />
         <div className="main-content">
           <TerminalView />
         </div>
-        {tasksPanelOpen && (
-          <div className="tasks-panel">
-            <div className="tasks-panel-header">
-              <span className="tasks-panel-title">Tasks</span>
-              <button
-                className="close-btn"
-                onClick={() => useUIStore.getState().toggleTasksPanel()}
-              >
-                &times;
-              </button>
-            </div>
-            <div className="tasks-panel-body">
-              <KanbanBoard />
-            </div>
-          </div>
-        )}
-        <Sidebar />
       </div>
       <StatusBar />
+      {agentWorkspaceOpen && (
+        <AgentWorkspaceModal
+          tabId={activeTabId}
+          onClose={() => useUIStore.getState().setAgentWorkspaceOpen(false)}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsModal onClose={() => useUIStore.getState().setSettingsOpen(false)} />
+      )}
     </div>
   );
 }

@@ -1,83 +1,69 @@
 import { useEffect } from "react";
 import { useUIStore, getTabPanesArray } from "../store/ui";
 import { useSessionsStore } from "../store/sessions";
+import { useSettingsStore, bindingMatches } from "../store/settings";
+import { spawnShell } from "../utils/spawn";
 
-interface ShortcutCallbacks {
-  onTogglePlusDropdown?: () => void;
-}
-
-export function useKeyboardShortcuts(callbacks?: ShortcutCallbacks) {
+export function useKeyboardShortcuts() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Only handle Alt+key combos (capture phase intercepts before xterm)
-      if (!e.altKey) return;
+      // Only handle shortcuts with a modifier key
+      if (!e.metaKey && !e.ctrlKey) return;
+      // Ignore if typing in a real input (not xterm's hidden textarea)
+      const target = e.target as HTMLElement;
+      if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement) return;
+      if (target instanceof HTMLTextAreaElement && !target.closest(".xterm")) return;
 
+      const shortcuts = useSettingsStore.getState().shortcuts;
       const ui = useUIStore.getState();
 
-      switch (e.key) {
-        case "t": {
-          // Alt+T: Toggle "+" dropdown
-          e.preventDefault();
-          e.stopPropagation();
-          callbacks?.onTogglePlusDropdown?.();
-          break;
-        }
+      for (const sc of shortcuts) {
+        if (!bindingMatches(e, sc.binding)) continue;
 
-        case "w": {
-          // Alt+W: Close focused pane
-          e.preventDefault();
-          e.stopPropagation();
-          const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
-          if (!activeTab) break;
-          const panesArr = getTabPanesArray(activeTab);
-          if (panesArr.length === 0) break;
-          const paneToClose = panesArr.find((p) => p.id === ui.focusedPaneId)
-            || panesArr[panesArr.length - 1];
-          if (paneToClose) {
-            useSessionsStore.getState().deleteSession(paneToClose.sessionId).catch(() => {});
-            ui.removePane(activeTab.id, paneToClose.id);
+        e.preventDefault();
+        e.stopPropagation();
+
+        switch (sc.id) {
+          case "newTerminal": {
+            spawnShell(ui.activeTabId);
+            break;
           }
-          break;
-        }
 
-        case "[": {
-          e.preventDefault();
-          e.stopPropagation();
-          ui.prevTab();
-          break;
-        }
-
-        case "]": {
-          e.preventDefault();
-          e.stopPropagation();
-          ui.nextTab();
-          break;
-        }
-
-        case "ArrowLeft":
-        case "ArrowRight":
-        case "ArrowUp":
-        case "ArrowDown": {
-          e.preventDefault();
-          e.stopPropagation();
-          const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
-          if (!activeTab) break;
-          const panesArr = getTabPanesArray(activeTab);
-          if (panesArr.length <= 1) break;
-          const currentIdx = panesArr.findIndex((p) => p.id === ui.focusedPaneId);
-          let nextIdx: number;
-          if (e.key === "ArrowRight" || e.key === "ArrowDown") {
-            nextIdx = (currentIdx + 1) % panesArr.length;
-          } else {
-            nextIdx = (currentIdx - 1 + panesArr.length) % panesArr.length;
+          case "closePane": {
+            const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
+            if (!activeTab) break;
+            const panesArr = getTabPanesArray(activeTab);
+            if (panesArr.length === 0) break;
+            const paneToClose = panesArr.find((p) => p.id === ui.focusedPaneId)
+              || panesArr[panesArr.length - 1];
+            if (paneToClose) {
+              useSessionsStore.getState().deleteSession(paneToClose.sessionId).catch(() => {});
+              ui.removePane(activeTab.id, paneToClose.id);
+            }
+            break;
           }
-          ui.setFocusedPane(panesArr[nextIdx].id);
-          break;
+
+          case "newWorkspace": {
+            ui.addTab();
+            break;
+          }
+
+          case "agentWorkspace": {
+            ui.setAgentWorkspaceOpen(true);
+            break;
+          }
+
+          case "settings": {
+            ui.setSettingsOpen(true);
+            break;
+          }
         }
+
+        return; // Handled
       }
     };
 
     document.addEventListener("keydown", handler, true);
     return () => document.removeEventListener("keydown", handler, true);
-  }, [callbacks]);
+  }, []);
 }
