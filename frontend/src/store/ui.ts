@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { getAgentInfo } from "../types";
 
 export type ViewMode = "terminals" | "kanban";
 
@@ -11,7 +12,15 @@ export interface Pane {
 export interface Tab {
   id: string;
   name: string;
+  customName: boolean; // true if user manually renamed
   panes: Pane[];
+}
+
+function deriveTabName(panes: Pane[]): string {
+  if (panes.length === 0) return "Workspace";
+  const first = getAgentInfo(panes[0].agentKey);
+  if (panes.length === 1) return first.name || "Shell";
+  return `${first.name || "Shell"} +${panes.length - 1}`;
 }
 
 interface UIState {
@@ -23,6 +32,7 @@ interface UIState {
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
   setViewMode: (mode: ViewMode) => void;
+  renameTab: (id: string, name: string) => void;
 
   addPane: (tabId: string, sessionId: string, agentKey: string) => void;
   removePane: (tabId: string, paneId: string) => void;
@@ -32,14 +42,19 @@ let tabCounter = 0;
 let paneCounter = 0;
 
 export const useUIStore = create<UIState>((set) => ({
-  tabs: [{ id: "tab-0", name: "Terminal", panes: [] }],
+  tabs: [{ id: "tab-0", name: "Workspace", customName: false, panes: [] }],
   activeTabId: "tab-0",
   viewMode: "terminals",
 
   addTab: (name?: string) => {
     tabCounter++;
     const id = `tab-${tabCounter}`;
-    const tab: Tab = { id, name: name || `Tab ${tabCounter + 1}`, panes: [] };
+    const tab: Tab = {
+      id,
+      name: name || "Workspace",
+      customName: !!name,
+      panes: [],
+    };
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }));
     return id;
   },
@@ -50,7 +65,7 @@ export const useUIStore = create<UIState>((set) => ({
       if (tabs.length === 0) {
         tabCounter++;
         const newId = `tab-${tabCounter}`;
-        tabs.push({ id: newId, name: "Terminal", panes: [] });
+        tabs.push({ id: newId, name: "Workspace", customName: false, panes: [] });
         return { tabs, activeTabId: newId };
       }
       const activeTabId = s.activeTabId === id ? tabs[0].id : s.activeTabId;
@@ -61,23 +76,41 @@ export const useUIStore = create<UIState>((set) => ({
   setActiveTab: (id: string) => set({ activeTabId: id }),
   setViewMode: (mode: ViewMode) => set({ viewMode: mode }),
 
+  renameTab: (id: string, name: string) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) =>
+        t.id === id ? { ...t, name, customName: true } : t
+      ),
+    }));
+  },
+
   addPane: (tabId: string, sessionId: string, agentKey: string) => {
     paneCounter++;
     const pane: Pane = { id: `pane-${paneCounter}`, sessionId, agentKey };
     set((s) => ({
-      tabs: s.tabs.map((t) =>
-        t.id === tabId ? { ...t, panes: [...t.panes, pane] } : t
-      ),
+      tabs: s.tabs.map((t) => {
+        if (t.id !== tabId) return t;
+        const newPanes = [...t.panes, pane];
+        return {
+          ...t,
+          panes: newPanes,
+          name: t.customName ? t.name : deriveTabName(newPanes),
+        };
+      }),
     }));
   },
 
   removePane: (tabId: string, paneId: string) => {
     set((s) => ({
-      tabs: s.tabs.map((t) =>
-        t.id === tabId
-          ? { ...t, panes: t.panes.filter((p) => p.id !== paneId) }
-          : t
-      ),
+      tabs: s.tabs.map((t) => {
+        if (t.id !== tabId) return t;
+        const newPanes = t.panes.filter((p) => p.id !== paneId);
+        return {
+          ...t,
+          panes: newPanes,
+          name: t.customName ? t.name : deriveTabName(newPanes),
+        };
+      }),
     }));
   },
 }));

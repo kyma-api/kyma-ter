@@ -10,6 +10,8 @@ import (
 	"github.com/creack/pty"
 )
 
+const scrollbackSize = 50 * 1024 // 50KB circular buffer
+
 type Session struct {
 	ID        string
 	AgentKey  string
@@ -24,6 +26,7 @@ type Session struct {
 	done        chan struct{}
 	exitCode    int
 	exited      bool
+	scrollback  []byte
 }
 
 func newSession(id, agentKey string, cmd *exec.Cmd, cols, rows uint16) (*Session, error) {
@@ -85,8 +88,15 @@ func (s *Session) waitExit() {
 }
 
 func (s *Session) broadcast(data []byte) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Append to scrollback buffer (circular)
+	s.scrollback = append(s.scrollback, data...)
+	if len(s.scrollback) > scrollbackSize {
+		s.scrollback = s.scrollback[len(s.scrollback)-scrollbackSize:]
+	}
+
 	for _, ch := range s.subscribers {
 		select {
 		case ch <- data:
@@ -97,16 +107,19 @@ func (s *Session) broadcast(data []byte) {
 }
 
 // Subscribe adds a subscriber and returns a channel for PTY output + an unsubscribe func.
-func (s *Session) Subscribe(id string) (<-chan []byte, func()) {
+// It also returns the current scrollback buffer contents so the caller can replay history.
+func (s *Session) Subscribe(id string) (<-chan []byte, func(), []byte) {
 	ch := make(chan []byte, 256)
 	s.mu.Lock()
 	s.subscribers[id] = ch
+	history := make([]byte, len(s.scrollback))
+	copy(history, s.scrollback)
 	s.mu.Unlock()
 	return ch, func() {
 		s.mu.Lock()
 		delete(s.subscribers, id)
 		s.mu.Unlock()
-	}
+	}, history
 }
 
 // Write sends input to the PTY (user keystrokes).

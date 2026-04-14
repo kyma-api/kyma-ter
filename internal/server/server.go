@@ -107,6 +107,9 @@ func (s *Server) registerRoutes() {
 	api.HandleFunc("/setup/device-code", s.handleDeviceCode).Methods("POST")
 	api.HandleFunc("/setup/device-poll", s.handleDevicePoll).Methods("POST")
 
+	// File upload (for drag-drop into terminal)
+	api.HandleFunc("/upload", s.handleUpload).Methods("POST")
+
 	// Messages
 	api.HandleFunc("/messages", s.handleSendMessage).Methods("POST")
 	api.HandleFunc("/messages", s.handleGetMessages).Methods("GET")
@@ -424,6 +427,42 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 func decodeBody(r *http.Request, v interface{}) error {
 	defer r.Body.Close()
 	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// ── Handlers: Upload ─────────────────────────────────────────────────────
+
+func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
+	// Max 20MB
+	r.ParseMultipartForm(20 << 20)
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "no file provided", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Save to uploads dir inside data dir
+	uploadsDir := filepath.Join(s.cfg.DataDir(), "uploads")
+	os.MkdirAll(uploadsDir, 0755)
+
+	// Use original filename, prefix with timestamp to avoid collisions
+	filename := fmt.Sprintf("%d_%s", time.Now().UnixMilli(), header.Filename)
+	destPath := filepath.Join(uploadsDir, filename)
+
+	dst, err := os.Create(destPath)
+	if err != nil {
+		http.Error(w, "failed to save file", http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "failed to write file", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"path": destPath})
 }
 
 // ── Handlers: Health ──────────────────────────────────────────────────────

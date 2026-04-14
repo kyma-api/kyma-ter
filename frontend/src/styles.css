@@ -37,11 +37,88 @@ body,
   height: 100%;
 }
 
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
 .main-content {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.view-panel {
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.sidebar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 52px;
+  padding: 10px 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.sidebar-btn svg {
+  width: 20px;
+  height: 20px;
+  opacity: 0.85;
+}
+
+.sidebar-btn:hover {
+  background: var(--bg-hover);
+  color: #fff;
+  border-color: #52525b;
+}
+
+.sidebar-btn-primary {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.sidebar-btn-primary svg {
+  opacity: 1;
+}
+
+.sidebar-btn-primary:hover {
+  background: rgba(34, 197, 94, 0.18);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
 }
 
 /* ── Tab Bar ─────────────────────────────────────────────────────────── */
@@ -113,6 +190,18 @@ body,
   padding: 4px 8px;
 }
 
+.tab-name-input {
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  outline: none;
+  width: 80px;
+  font-family: inherit;
+}
+
 .tab-close {
   font-size: 14px;
   opacity: 0;
@@ -168,39 +257,7 @@ body,
   color: var(--text);
 }
 
-/* ── Toolbar ─────────────────────────────────────────────────────────── */
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.toolbar-btn {
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.toolbar-btn:hover {
-  background: var(--bg-hover);
-}
-
-.toolbar-btn.primary {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: white;
-}
-
-.toolbar-btn.primary:hover {
-  background: var(--accent);
-}
+/* ── Toolbar (legacy, kept for compatibility) ───────────────────────── */
 
 /* ── Dropdown ────────────────────────────────────────────────────────── */
 .dropdown-wrapper {

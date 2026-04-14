@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { TabBar } from "./components/Layout/TabBar";
-import { Toolbar } from "./components/Layout/Toolbar";
+import { Sidebar } from "./components/Layout/Sidebar";
 import { PaneGrid } from "./components/Layout/PaneGrid";
 import { StatusBar } from "./components/Layout/StatusBar";
 import { KanbanBoard } from "./components/Kanban/KanbanBoard";
@@ -32,7 +32,6 @@ function TerminalView() {
 
   return (
     <div className="terminal-view">
-      <Toolbar />
       <div className="pane-area">
         <PaneGrid panes={activeTab.panes} onClosePane={handleClosePane} />
       </div>
@@ -54,11 +53,33 @@ export default function App() {
     connectEvents();
   }, [fetchSessions, fetchTasks, fetchLocks, connectEvents]);
 
+  // Prevent browser from opening dropped files in a new tab
+  useEffect(() => {
+    const prevent = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    document.addEventListener("dragover", prevent);
+    document.addEventListener("drop", prevent);
+    return () => {
+      document.removeEventListener("dragover", prevent);
+      document.removeEventListener("drop", prevent);
+    };
+  }, []);
+
   return (
     <div className="app">
       <TabBar />
-      <div className="main-content">
-        {viewMode === "terminals" ? <TerminalView /> : <KanbanBoard />}
+      <div className="app-body">
+        <div className="main-content">
+          <div className="view-panel" style={{ display: viewMode === "terminals" ? "flex" : "none" }}>
+            <TerminalView />
+          </div>
+          <div className="view-panel" style={{ display: viewMode === "kanban" ? "flex" : "none" }}>
+            <KanbanBoard />
+          </div>
+        </div>
+        <Sidebar />
       </div>
       <StatusBar />
     </div>

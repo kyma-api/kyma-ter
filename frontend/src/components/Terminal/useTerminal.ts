@@ -5,6 +5,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { createTerminalWS } from "../../api/ws";
+import { api } from "../../api/client";
 
 interface UseTerminalOptions {
   sessionId: string;
@@ -129,7 +130,42 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
     });
     observer.observe(containerRef.current);
 
+    // Native drag-and-drop handlers (must be native because xterm captures React events)
+    const container = containerRef.current;
+
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const handleDrop = async (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+
+      // Upload each file to server, get full server-side path
+      for (const file of Array.from(files)) {
+        try {
+          const serverPath = await api.uploadFile(file);
+          const escaped = serverPath.includes(" ") ? `'${serverPath}'` : serverPath;
+          if (ws.readyState === WebSocket.OPEN) {
+            const encoder = new TextEncoder();
+            ws.send(encoder.encode(escaped + " "));
+          }
+        } catch {
+          // Ignore upload errors
+        }
+      }
+    };
+
+    container.addEventListener("dragover", handleDragOver);
+    container.addEventListener("drop", handleDrop);
+
     return () => {
+      container.removeEventListener("dragover", handleDragOver);
+      container.removeEventListener("drop", handleDrop);
       observer.disconnect();
       ws.close();
       term.dispose();
@@ -139,5 +175,14 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
     };
   }, [sessionId, onExit]);
 
-  return { containerRef, termRef, fit };
+  // Write text to PTY (e.g., pasting a file path)
+  const writeText = useCallback((text: string) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      const encoder = new TextEncoder();
+      ws.send(encoder.encode(text));
+    }
+  }, []);
+
+  return { containerRef, termRef, fit, writeText };
 }

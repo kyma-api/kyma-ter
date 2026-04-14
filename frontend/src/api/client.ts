@@ -76,4 +76,14 @@ export const api = {
       email?: string;
       error?: string;
     }>("POST", "/api/v1/setup/device-poll", { device_code: deviceCode }),
+
+  // Upload file, returns server-side path
+  uploadFile: async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/api/v1/upload`, { method: "POST", body: form });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || res.statusText);
+    return json.data.path as string;
+  },
 };

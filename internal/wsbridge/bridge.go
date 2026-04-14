@@ -45,8 +45,15 @@ func HandleTerminalWS(mgr *ptymanager.Manager) http.HandlerFunc {
 		defer conn.Close()
 
 		subID := uuid.New().String()
-		dataCh, unsub := session.Subscribe(subID)
+		dataCh, unsub, history := session.Subscribe(subID)
 		defer unsub()
+
+		// Send scrollback history first
+		if len(history) > 0 {
+			if err := conn.WriteMessage(websocket.BinaryMessage, history); err != nil {
+				return
+			}
+		}
 
 		// Write loop: PTY output → WebSocket
 		done := make(chan struct{})
