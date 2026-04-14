@@ -1,56 +1,33 @@
 import { useState, useEffect } from "react";
-import { useSessionsStore } from "../../store/sessions";
 import { useUIStore, useActiveTab } from "../../store/ui";
 import { useTasksStore } from "../../store/tasks";
 import { SetupModal } from "../Setup/SetupModal";
-import { api } from "../../api/client";
+import { spawnKymaIfReady, spawnAgent } from "../../utils/spawn";
 
 export function Sidebar() {
   const [showSetup, setShowSetup] = useState(false);
   const [autoSpawned, setAutoSpawned] = useState(false);
-  const createSession = useSessionsStore((s) => s.createSession);
-  const { activeTabId, addPane, tasksPanelOpen, toggleTasksPanel } = useUIStore();
+  const { activeTabId, tasksPanelOpen, toggleTasksPanel } = useUIStore();
   const activeTab = useActiveTab();
   const taskCount = useTasksStore((s) => s.tasks.length);
 
-  const spawnKyma = async () => {
-    const sessionId = await createSession("kyma");
-    addPane(activeTabId, sessionId, "kyma");
-  };
-
-  const handleAgentClick = async () => {
-    try {
-      const status = await api.setupStatus();
-      if (status.ready) {
-        spawnKyma();
-      } else {
-        setShowSetup(true);
-      }
-    } catch {
-      setShowSetup(true);
-    }
+  const handleAgentClick = () => {
+    spawnKymaIfReady(activeTabId, () => setShowSetup(true));
   };
 
   const handleSetupComplete = () => {
     setShowSetup(false);
-    spawnKyma();
+    spawnAgent("kyma", activeTabId);
   };
 
   // Auto-spawn Kyma Agent on first load if ready and no panes open
   useEffect(() => {
     if (autoSpawned) return;
-    if (activeTab && activeTab.panes.length > 0) return;
+    if (activeTab && Object.keys(activeTab.panes).length > 0) return;
 
     const tryAutoSpawn = async () => {
-      try {
-        const status = await api.setupStatus();
-        if (status.ready) {
-          setAutoSpawned(true);
-          spawnKyma();
-        }
-      } catch {
-        // Not ready, user will click manually
-      }
+      setAutoSpawned(true);
+      spawnKymaIfReady(activeTabId, () => {});
     };
 
     const timer = setTimeout(tryAutoSpawn, 300);

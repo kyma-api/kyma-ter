@@ -59,6 +59,9 @@ func New(cfg *config.Config, database *db.DB, frontendFS ...fs.FS) *Server {
 	// Start stale lock cleanup
 	go s.staleLockCleanup()
 
+	// Start orphaned session cleanup
+	go s.orphanSessionCleanup()
+
 	return s
 }
 
@@ -81,6 +84,7 @@ func (s *Server) registerRoutes() {
 	api.HandleFunc("/sessions/{id}", s.handleGetSession).Methods("GET")
 	api.HandleFunc("/sessions/{id}", s.handleDeleteSession).Methods("DELETE")
 	api.HandleFunc("/sessions/{id}/resize", s.handleResizeSession).Methods("POST")
+	api.HandleFunc("/sessions/cleanup", s.handleSessionCleanup).Methods("POST")
 
 	// Tasks
 	api.HandleFunc("/tasks", s.handleCreateTask).Methods("POST")
@@ -163,6 +167,104 @@ func (s *Server) staleLockCleanup() {
 			log.Printf("cleaned %d expired locks", n)
 		}
 	}
+}
+
+// orphanSessionCleanup periodically checks for sessions with no active browser client
+// and kills them after a grace period. Sessions with in-progress tasks are preserved.
+func (s *Server) orphanSessionCleanup() {
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
+
+	// Track when sessions were first seen as orphaned
+	orphanedSince := make(map[string]time.Time)
+	const gracePeriod = 5 * time.Minute
+	const heartbeatTimeout = 90 * time.Second
+
+	for range ticker.C {
+		// Skip if there are no clients connected at all (server just started, no browser yet)
+		if !s.events.HasActiveClients() {
+			continue
+		}
+
+		// Get running session IDs
+		sessions := s.pty.List()
+		var runningIDs []string
+		for _, sess := range sessions {
+			if !sess.Exited {
+				runningIDs = append(runningIDs, sess.ID)
+			}
+		}
+
+		orphaned := s.events.GetOrphanedSessionIDs(runningIDs, heartbeatTimeout)
+		now := time.Now()
+
+		// Track newly orphaned sessions
+		currentOrphaned := make(map[string]bool)
+		for _, sid := range orphaned {
+			currentOrphaned[sid] = true
+			if _, exists := orphanedSince[sid]; !exists {
+				orphanedSince[sid] = now
+				log.Printf("session %s orphaned (no client heartbeat)", sid[:8])
+			}
+		}
+
+		// Remove sessions that are no longer orphaned (client reconnected)
+		for sid := range orphanedSince {
+			if !currentOrphaned[sid] {
+				log.Printf("session %s reclaimed by client", sid[:8])
+				delete(orphanedSince, sid)
+			}
+		}
+
+		// Kill sessions orphaned beyond grace period
+		for sid, since := range orphanedSince {
+			if now.Sub(since) < gracePeriod {
+				continue
+			}
+			// Check if session has in-progress task — preserve it
+			tasks, _ := s.db.ListTasks()
+			hasActiveTask := false
+			for _, t := range tasks {
+				if t.SessionID == sid && t.Status == "in-progress" {
+					hasActiveTask = true
+					break
+				}
+			}
+			if hasActiveTask {
+				log.Printf("session %s orphaned but has active task, preserving", sid[:8])
+				continue
+			}
+			log.Printf("killing orphaned session %s (orphaned for %v)", sid[:8], now.Sub(since))
+			if err := s.pty.Kill(sid); err == nil {
+				s.db.DeleteSession(sid)
+				s.db.ReleaseSessionLocks(sid)
+				s.db.ArchiveSessionMessages(sid)
+			}
+			delete(orphanedSince, sid)
+		}
+	}
+}
+
+// handleSessionCleanup handles sendBeacon from browser beforeunload.
+// Kills specified sessions immediately.
+func (s *Server) handleSessionCleanup(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SessionIDs []string `json:"session_ids"`
+	}
+	if err := decodeBody(r, &req); err != nil {
+		writeError(w, 400, "invalid request body")
+		return
+	}
+	killed := 0
+	for _, sid := range req.SessionIDs {
+		if err := s.pty.Kill(sid); err == nil {
+			s.db.DeleteSession(sid)
+			s.db.ReleaseSessionLocks(sid)
+			s.db.ArchiveSessionMessages(sid)
+			killed++
+		}
+	}
+	writeJSON(w, map[string]int{"killed": killed})
 }
 
 const kymaAuthAPI = "https://kymaapi.com/v1/auth"

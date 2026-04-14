@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -115,17 +116,31 @@ func HandleTerminalWS(mgr *ptymanager.Manager) http.HandlerFunc {
 	}
 }
 
-// HandleEventsWS handles the global event broadcast WebSocket.
+// ClientInfo tracks a connected browser client and its heartbeat state.
+type ClientInfo struct {
+	ClientID      string
+	Conn          *websocket.Conn
+	SessionIDs    []string
+	LastHeartbeat time.Time
+}
+
+// EventBroadcaster handles the global event broadcast WebSocket.
 // Route: /ws/events
 type EventBroadcaster struct {
 	mu      sync.RWMutex
-	clients map[*websocket.Conn]bool
+	clients map[*websocket.Conn]*ClientInfo
 }
 
 func NewEventBroadcaster() *EventBroadcaster {
 	return &EventBroadcaster{
-		clients: make(map[*websocket.Conn]bool),
+		clients: make(map[*websocket.Conn]*ClientInfo),
 	}
+}
+
+type heartbeatMessage struct {
+	Type       string   `json:"type"`
+	ClientID   string   `json:"client_id"`
+	SessionIDs []string `json:"session_ids"`
 }
 
 func (eb *EventBroadcaster) HandleEventsWS(w http.ResponseWriter, r *http.Request) {
@@ -142,16 +157,64 @@ func (eb *EventBroadcaster) HandleEventsWS(w http.ResponseWriter, r *http.Reques
 	}()
 
 	eb.mu.Lock()
-	eb.clients[conn] = true
+	eb.clients[conn] = &ClientInfo{
+		Conn:          conn,
+		LastHeartbeat: time.Now(),
+	}
 	eb.mu.Unlock()
 
-	// Keep connection alive, read pings
+	// Read loop: handle heartbeat messages and keep-alive pings
 	for {
-		_, _, err := conn.ReadMessage()
+		_, data, err := conn.ReadMessage()
 		if err != nil {
 			break
 		}
+		var msg heartbeatMessage
+		if json.Unmarshal(data, &msg) == nil && msg.Type == "heartbeat" {
+			eb.mu.Lock()
+			if ci, ok := eb.clients[conn]; ok {
+				ci.ClientID = msg.ClientID
+				ci.SessionIDs = msg.SessionIDs
+				ci.LastHeartbeat = time.Now()
+			}
+			eb.mu.Unlock()
+		}
 	}
+}
+
+// GetOrphanedSessionIDs returns session IDs that have no active client heartbeat
+// within the given timeout. It cross-references all claimed session IDs from clients
+// against the provided list of running session IDs.
+func (eb *EventBroadcaster) GetOrphanedSessionIDs(runningSessionIDs []string, timeout time.Duration) []string {
+	eb.mu.RLock()
+	defer eb.mu.RUnlock()
+
+	// Build set of session IDs claimed by healthy clients
+	claimed := make(map[string]bool)
+	now := time.Now()
+	for _, ci := range eb.clients {
+		if now.Sub(ci.LastHeartbeat) < timeout {
+			for _, sid := range ci.SessionIDs {
+				claimed[sid] = true
+			}
+		}
+	}
+
+	// Sessions that are running but not claimed by any healthy client
+	var orphaned []string
+	for _, sid := range runningSessionIDs {
+		if !claimed[sid] {
+			orphaned = append(orphaned, sid)
+		}
+	}
+	return orphaned
+}
+
+// HasActiveClients returns true if any client has sent a heartbeat within timeout.
+func (eb *EventBroadcaster) HasActiveClients() bool {
+	eb.mu.RLock()
+	defer eb.mu.RUnlock()
+	return len(eb.clients) > 0
 }
 
 func (eb *EventBroadcaster) Broadcast(event interface{}) {

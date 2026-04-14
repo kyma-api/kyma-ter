@@ -17,6 +17,9 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const disposed = useRef(false);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const processExited = useRef(false);
 
   const fit = useCallback(() => {
     fitAddonRef.current?.fit();
@@ -24,6 +27,8 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
 
   useEffect(() => {
     if (!containerRef.current || !sessionId) return;
+    disposed.current = false;
+    processExited.current = false;
 
     const term = new Terminal({
       cursorBlink: true,
@@ -75,53 +80,77 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
 
     fitAddon.fit();
 
-    // WebSocket connection
-    const ws = createTerminalWS(sessionId);
-    ws.binaryType = "arraybuffer";
+    // WebSocket connection with reconnect
+    let retryDelay = 1000;
+    const MAX_RETRY = 30_000;
 
-    ws.onopen = () => {
-      // Send initial resize
-      const msg = JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows });
-      ws.send(msg);
-    };
+    function connectWS() {
+      if (disposed.current || processExited.current) return;
 
-    ws.onmessage = (ev) => {
-      if (ev.data instanceof ArrayBuffer) {
-        term.write(new Uint8Array(ev.data));
-      } else if (typeof ev.data === "string") {
-        try {
-          const msg = JSON.parse(ev.data);
-          if (msg.type === "exited") {
-            term.write(`\r\n\x1b[90m[Process exited with code ${msg.exit_code}]\x1b[0m\r\n`);
-            onExit?.(msg.exit_code);
+      const ws = createTerminalWS(sessionId);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        retryDelay = 1000; // reset backoff on success
+        // Send initial resize
+        const msg = JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows });
+        ws.send(msg);
+      };
+
+      ws.onmessage = (ev) => {
+        if (ev.data instanceof ArrayBuffer) {
+          term.write(new Uint8Array(ev.data));
+        } else if (typeof ev.data === "string") {
+          try {
+            const msg = JSON.parse(ev.data);
+            if (msg.type === "exited") {
+              processExited.current = true;
+              term.write(`\r\n\x1b[90m[Process exited with code ${msg.exit_code}]\x1b[0m\r\n`);
+              onExit?.(msg.exit_code);
+            }
+          } catch {
+            // Not JSON, ignore
           }
-        } catch {
-          // Not JSON, ignore
         }
-      }
-    };
+      };
 
-    ws.onclose = () => {
-      term.write("\r\n\x1b[90m[Disconnected]\x1b[0m\r\n");
-    };
+      ws.onclose = () => {
+        wsRef.current = null;
+        if (disposed.current || processExited.current) {
+          if (!processExited.current) {
+            term.write("\r\n\x1b[90m[Disconnected]\x1b[0m\r\n");
+          }
+          return;
+        }
+        // Auto-reconnect with exponential backoff
+        term.write("\r\n\x1b[33m[Reconnecting...]\x1b[0m\r\n");
+        reconnectTimer.current = setTimeout(() => {
+          retryDelay = Math.min(retryDelay * 2, MAX_RETRY);
+          connectWS();
+        }, retryDelay);
+      };
 
-    // Terminal input → WebSocket
-    term.onData((data) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        const encoder = new TextEncoder();
-        ws.send(encoder.encode(data));
-      }
-    });
+      wsRef.current = ws;
 
-    // Resize handler
-    term.onResize(({ cols, rows }) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "resize", cols, rows }));
-      }
-    });
+      // Terminal input → WebSocket
+      term.onData((data) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const encoder = new TextEncoder();
+          ws.send(encoder.encode(data));
+        }
+      });
+
+      // Resize handler
+      term.onResize(({ cols, rows }) => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "resize", cols, rows }));
+        }
+      });
+    }
+
+    connectWS();
 
     termRef.current = term;
-    wsRef.current = ws;
     fitAddonRef.current = fitAddon;
 
     // Observe container resize
@@ -150,7 +179,8 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
         try {
           const serverPath = await api.uploadFile(file);
           const escaped = serverPath.includes(" ") ? `'${serverPath}'` : serverPath;
-          if (ws.readyState === WebSocket.OPEN) {
+          const ws = wsRef.current;
+          if (ws && ws.readyState === WebSocket.OPEN) {
             const encoder = new TextEncoder();
             ws.send(encoder.encode(escaped + " "));
           }
@@ -164,10 +194,12 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
     container.addEventListener("drop", handleDrop);
 
     return () => {
+      disposed.current = true;
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       container.removeEventListener("dragover", handleDragOver);
       container.removeEventListener("drop", handleDrop);
       observer.disconnect();
-      ws.close();
+      wsRef.current?.close();
       term.dispose();
       termRef.current = null;
       wsRef.current = null;

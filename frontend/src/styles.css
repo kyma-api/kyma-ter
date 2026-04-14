@@ -202,10 +202,58 @@ body,
   color: var(--text);
 }
 
+.tab-add-wrapper {
+  position: relative;
+}
+
 .tab-add {
   color: var(--text-muted);
   font-size: 16px;
   padding: 4px 8px;
+}
+
+.plus-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  margin-top: 4px;
+}
+
+.plus-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.plus-dropdown-item:hover {
+  background: var(--border);
+}
+
+.plus-dropdown-icon {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.plus-dropdown-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .tab-name-input {
@@ -411,6 +459,24 @@ body,
 .badge-done {
   background: rgba(99, 102, 241, 0.15);
   color: #818cf8;
+}
+
+.split-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0 3px;
+  line-height: 1;
+  border-radius: 3px;
+  opacity: 0.5;
+}
+
+.split-btn:hover {
+  color: var(--accent);
+  opacity: 1;
+  background: rgba(34, 197, 94, 0.1);
 }
 
 .close-btn {

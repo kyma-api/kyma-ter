@@ -37,7 +37,7 @@ export function Toolbar() {
   // Auto-spawn Kyma Agent on first load if ready and no panes open
   useEffect(() => {
     if (autoSpawned) return;
-    if (activeTab && activeTab.panes.length > 0) return;
+    if (activeTab && Object.keys(activeTab.panes).length > 0) return;
 
     const tryAutoSpawn = async () => {
       try {

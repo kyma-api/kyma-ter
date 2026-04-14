@@ -16,9 +16,10 @@ interface TerminalProps {
   sessionId: string;
   agentKey: string;
   onClose?: () => void;
+  onSplit?: (direction: "horizontal" | "vertical") => void;
 }
 
-export function TerminalPane({ sessionId, agentKey, onClose }: TerminalProps) {
+export function TerminalPane({ sessionId, agentKey, onClose, onSplit }: TerminalProps) {
   const agent = getAgentInfo(agentKey);
   const task = useTasksStore((s) =>
     s.tasks.find((t) => t.session_id === sessionId)
@@ -71,6 +72,16 @@ export function TerminalPane({ sessionId, agentKey, onClose }: TerminalProps) {
             <span className="lock-indicator" title={`${lockCount} file lock${lockCount > 1 ? "s" : ""}`}>
               L {lockCount}
             </span>
+          )}
+          {onSplit && (
+            <>
+              <button className="split-btn" onClick={() => onSplit("horizontal")} title="Split Right">
+                &#x2503;
+              </button>
+              <button className="split-btn" onClick={() => onSplit("vertical")} title="Split Down">
+                &#x2501;
+              </button>
+            </>
           )}
           {onClose && (
             <button className="close-btn" onClick={onClose} title="Close">

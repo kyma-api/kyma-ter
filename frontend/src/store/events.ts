@@ -11,9 +11,23 @@ interface EventData {
   action?: string;
 }
 
+// Persistent client ID so the backend can track this browser tab
+function getClientId(): string {
+  let id = localStorage.getItem("kyma-ter-client-id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("kyma-ter-client-id", id);
+  }
+  return id;
+}
+
+const CLIENT_ID = getClientId();
+const HEARTBEAT_INTERVAL = 30_000; // 30 seconds
+
 interface EventsState {
   connected: boolean;
   ws: WebSocket | null;
+  heartbeatTimer: ReturnType<typeof setInterval> | null;
   connect: () => void;
   disconnect: () => void;
 }
@@ -21,6 +35,7 @@ interface EventsState {
 export const useEventsStore = create<EventsState>((set, get) => ({
   connected: false,
   ws: null,
+  heartbeatTimer: null,
 
   connect: () => {
     if (get().ws) return;
@@ -29,10 +44,16 @@ export const useEventsStore = create<EventsState>((set, get) => ({
 
     ws.onopen = () => {
       set({ connected: true });
+      // Start heartbeat
+      sendHeartbeat(ws);
+      const timer = setInterval(() => sendHeartbeat(ws), HEARTBEAT_INTERVAL);
+      set({ heartbeatTimer: timer });
     };
 
     ws.onclose = () => {
-      set({ connected: false, ws: null });
+      const { heartbeatTimer } = get();
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      set({ connected: false, ws: null, heartbeatTimer: null });
       // Auto-reconnect after 2s
       setTimeout(() => {
         if (!get().ws) get().connect();
@@ -56,13 +77,26 @@ export const useEventsStore = create<EventsState>((set, get) => ({
   },
 
   disconnect: () => {
-    const { ws } = get();
+    const { ws, heartbeatTimer } = get();
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (ws) {
       ws.close();
-      set({ ws: null, connected: false });
+      set({ ws: null, connected: false, heartbeatTimer: null });
     }
   },
 }));
+
+function sendHeartbeat(ws: WebSocket) {
+  if (ws.readyState !== WebSocket.OPEN) return;
+  const sessionIds = useUIStore.getState().getAllSessionIds();
+  ws.send(JSON.stringify({
+    type: "heartbeat",
+    client_id: CLIENT_ID,
+    session_ids: sessionIds,
+  }));
+}
+
+export { CLIENT_ID };
 
 function handleEvent(msg: EventData) {
   const data = msg.data || {};
@@ -89,9 +123,9 @@ function handleEvent(msg: EventData) {
       if (sessionId) {
         const ui = useUIStore.getState();
         const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
-        const alreadyHasPane = activeTab?.panes.some(
-          (p) => p.sessionId === sessionId
-        );
+        const alreadyHasPane = activeTab
+          ? Object.values(activeTab.panes).some((p) => p.sessionId === sessionId)
+          : false;
         if (!alreadyHasPane) {
           ui.addPane(ui.activeTabId, sessionId, agentKey || "");
         }

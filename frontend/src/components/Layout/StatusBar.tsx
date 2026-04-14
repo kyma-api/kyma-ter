@@ -23,7 +23,7 @@ export function StatusBar() {
         </span>
         {activeTab && (
           <span className="status-item">
-            {activeTab.panes.length} pane{activeTab.panes.length !== 1 ? "s" : ""}
+            {Object.keys(activeTab.panes).length} pane{Object.keys(activeTab.panes).length !== 1 ? "s" : ""}
           </span>
         )}
         {activeTasks.length > 0 && (
