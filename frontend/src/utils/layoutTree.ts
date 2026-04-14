@@ -243,6 +243,48 @@ export function createGridLayout(paneIds: string[], cols: number, rows: number):
   };
 }
 
+// Build a column-based grid: panes assigned row-first, rendered as vertical columns.
+// E.g. 6 panes (3 cols, 2 rows): col0=[1,4], col1=[2,5], col2=[3,6]
+// Result: horizontal container of vertical column containers.
+export function createColumnFirstGrid(paneIds: string[], cols: number, _rows: number): LayoutNode {
+  if (paneIds.length === 1) return createLeaf(paneIds[0]);
+
+  // Distribute panes row-first into columns: row0 fills left-to-right, then row1, etc.
+  // pane[i] → column = i % cols, row = floor(i / cols)
+  const columns: string[][] = Array.from({ length: cols }, () => []);
+  for (let i = 0; i < paneIds.length; i++) {
+    const colIdx = i % cols;
+    columns[colIdx].push(paneIds[i]);
+  }
+
+  // Build column nodes
+  const colNodes: LayoutNode[] = columns
+    .filter((col) => col.length > 0)
+    .map((col) => {
+      if (col.length === 1) return createLeaf(col[0]);
+      const children = col.map((id) => createLeaf(id));
+      const equalSize = 100 / children.length;
+      return {
+        id: nextNodeId(),
+        type: "container" as const,
+        direction: "vertical" as const,
+        children,
+        sizes: children.map(() => equalSize),
+      };
+    });
+
+  if (colNodes.length === 1) return colNodes[0];
+
+  const equalColSize = 100 / colNodes.length;
+  return {
+    id: nextNodeId(),
+    type: "container",
+    direction: "horizontal",
+    children: colNodes,
+    sizes: colNodes.map(() => equalColSize),
+  };
+}
+
 // --- Internal helpers ---
 
 function mapNode(

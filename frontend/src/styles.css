@@ -268,6 +268,11 @@ body,
   font-family: inherit;
 }
 
+.tab-icon {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
 .tab-close {
   font-size: 14px;
   opacity: 0;
@@ -1251,11 +1256,26 @@ body,
   color: #eab308;
 }
 
+.empty-psi {
+  font-family: serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #eab308;
+}
+
 .empty-hint-keys {
   margin-top: 24px;
   font-size: 12px;
   color: var(--text-muted);
   opacity: 0.5;
+}
+
+.sidebar-psi {
+  font-family: serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #eab308;
+  line-height: 1;
 }
 
 /* ── Sidebar spacer ──────────────────────────────────────────────────── */
@@ -1458,7 +1478,89 @@ body,
   cursor: not-allowed;
 }
 
-/* ── Settings Modal ──────────────────────────────────────────────────── */
+/* ── Settings Page (Tab) ─────────────────────────────────────────────── */
+.settings-page {
+  display: flex;
+  height: 100%;
+  background: var(--bg);
+}
+
+.settings-nav {
+  width: 200px;
+  min-width: 200px;
+  border-right: 1px solid var(--border);
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--bg-elevated);
+}
+
+.settings-nav-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0 16px 12px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.1s;
+  border-left: 2px solid transparent;
+}
+
+.settings-nav-item:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.settings-nav-item.active {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border-left-color: #eab308;
+}
+
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+.settings-section {
+  max-width: 600px;
+}
+
+.settings-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.settings-section-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+
+.settings-section-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Legacy modal (kept for reference, can be removed) */
 .settings-modal {
   width: 480px;
   max-width: 95vw;

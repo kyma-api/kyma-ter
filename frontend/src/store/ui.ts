@@ -11,6 +11,7 @@ import {
   moveNode,
   getLeafPaneIds,
   createGridLayout,
+  createColumnFirstGrid,
   resetNodeCounter,
 } from "../utils/layoutTree";
 
@@ -24,6 +25,7 @@ export interface Tab {
   id: string;
   name: string;
   customName: boolean;
+  type?: "workspace" | "settings"; // default = workspace
   layout: LayoutNode | null; // tree layout, null = empty
   panes: Record<string, Pane>; // flat pane lookup by paneId
 }
@@ -114,7 +116,23 @@ export const useUIStore = create<UIState>()(
       toggleTasksPanel: () => set((s) => ({ tasksPanelOpen: !s.tasksPanelOpen })),
       setFocusedPane: (id: string | null) => set({ focusedPaneId: id }),
       setAgentWorkspaceOpen: (open: boolean) => set({ agentWorkspaceOpen: open }),
-      setSettingsOpen: (open: boolean) => set({ settingsOpen: open }),
+      setSettingsOpen: (open: boolean) => {
+        if (open) {
+          // Find existing settings tab or create one
+          const state = get();
+          const existing = state.tabs.find((t) => t.type === "settings");
+          if (existing) {
+            set({ activeTabId: existing.id, settingsOpen: true });
+          } else {
+            tabCounter++;
+            const id = `tab-${tabCounter}`;
+            const tab: Tab = { id, name: "Settings", customName: true, type: "settings", layout: null, panes: {} };
+            set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id, settingsOpen: true }));
+          }
+        } else {
+          set({ settingsOpen: false });
+        }
+      },
 
       nextTab: () => {
         set((s) => {
@@ -158,10 +176,10 @@ export const useUIStore = create<UIState>()(
               // Up to 3 panes: single horizontal row
               newLayout = createGridLayout(allPaneIds, totalPanes, 1);
             } else {
-              // 4+ panes: auto-wrap into grid (max 3 cols)
-              const cols = Math.min(totalPanes, 3);
+              // 4+ panes: column-based layout, 3 columns, fill left-to-right then top-to-bottom
+              const cols = 3;
               const rows = Math.ceil(totalPanes / cols);
-              newLayout = createGridLayout(allPaneIds, cols, rows);
+              newLayout = createColumnFirstGrid(allPaneIds, cols, rows);
             }
             const paneArr = Object.values(newPanes);
             return {
