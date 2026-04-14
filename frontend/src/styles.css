@@ -1534,11 +1534,12 @@ body,
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px;
+  padding: 40px 48px;
 }
 
 .settings-section {
-  max-width: 600px;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .settings-section-title {
