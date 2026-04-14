@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useUIStore, getTabPanesArray } from "../store/ui";
 import { useSessionsStore } from "../store/sessions";
 import { useSettingsStore, bindingMatches } from "../store/settings";
-import { spawnShell } from "../utils/spawn";
+import { spawnShell, spawnKymaIfReady } from "../utils/spawn";
 
 export function useKeyboardShortcuts() {
   useEffect(() => {
@@ -26,6 +26,13 @@ export function useKeyboardShortcuts() {
         switch (sc.id) {
           case "newTerminal": {
             spawnShell(ui.activeTabId);
+            break;
+          }
+
+          case "newKymaAgent": {
+            spawnKymaIfReady(ui.activeTabId, () => {
+              ui.setAgentWorkspaceOpen(true);
+            });
             break;
           }
 
