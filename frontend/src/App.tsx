@@ -44,7 +44,7 @@ export default function App() {
   const fetchTasks = useTasksStore((s) => s.fetch);
   const fetchLocks = useLocksStore((s) => s.fetch);
   const connectEvents = useEventsStore((s) => s.connect);
-  const viewMode = useUIStore((s) => s.viewMode);
+  const tasksPanelOpen = useUIStore((s) => s.tasksPanelOpen);
 
   useEffect(() => {
     fetchSessions();
@@ -72,13 +72,24 @@ export default function App() {
       <TabBar />
       <div className="app-body">
         <div className="main-content">
-          <div className="view-panel" style={{ display: viewMode === "terminals" ? "flex" : "none" }}>
-            <TerminalView />
-          </div>
-          <div className="view-panel" style={{ display: viewMode === "kanban" ? "flex" : "none" }}>
-            <KanbanBoard />
-          </div>
+          <TerminalView />
         </div>
+        {tasksPanelOpen && (
+          <div className="tasks-panel">
+            <div className="tasks-panel-header">
+              <span className="tasks-panel-title">Tasks</span>
+              <button
+                className="close-btn"
+                onClick={() => useUIStore.getState().toggleTasksPanel()}
+              >
+                &times;
+              </button>
+            </div>
+            <div className="tasks-panel-body">
+              <KanbanBoard />
+            </div>
+          </div>
+        )}
         <Sidebar />
       </div>
       <StatusBar />

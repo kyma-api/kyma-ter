@@ -114,11 +114,29 @@ body,
   color: var(--accent);
 }
 
+.sidebar-btn-active {
+  background: var(--bg-hover);
+  color: var(--text);
+  border-color: #52525b;
+}
+
 .sidebar-label {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: -0.2px;
   white-space: nowrap;
+}
+
+.sidebar-badge {
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--accent);
+  color: #000;
+  padding: 0 5px;
+  border-radius: 8px;
+  line-height: 16px;
+  min-width: 16px;
+  text-align: center;
 }
 
 /* ── Tab Bar ─────────────────────────────────────────────────────────── */
@@ -499,19 +517,95 @@ body,
   font-weight: 600;
 }
 
+/* ── Tasks Side Panel ──────────────────────────────────────────────── */
+.tasks-panel {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.tasks-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  min-height: 34px;
+}
+
+.tasks-panel-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tasks-panel-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Add Note ──────────────────────────────────────────────────────── */
+.kanban-add-area {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.add-note-btn {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.add-note-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.add-note-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  border-radius: 6px;
+  outline: none;
+  font-family: inherit;
+}
+
+.add-note-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
 /* ── Kanban Board ───────────────────────────────────────────────────── */
 .kanban-board {
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
   height: 100%;
-  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .kanban-column {
-  flex: 1;
-  min-width: 220px;
-  max-width: 340px;
+  flex: none;
+  min-width: unset;
+  max-width: unset;
   display: flex;
   flex-direction: column;
   background: var(--bg-elevated);
@@ -805,7 +899,7 @@ body,
   gap: 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #06b6d4;
+  color: #eab308;
 }
 
 .setup-icon {
@@ -858,7 +952,7 @@ body,
 }
 
 .setup-input:focus {
-  border-color: #06b6d4;
+  border-color: #eab308;
 }
 
 .setup-input::placeholder {
@@ -879,13 +973,13 @@ body,
 }
 
 .setup-btn.primary {
-  background: #06b6d4;
-  border-color: #06b6d4;
+  background: #eab308;
+  border-color: #eab308;
   color: #000;
 }
 
 .setup-btn.primary:hover {
-  background: #22d3ee;
+  background: #facc15;
 }
 
 .setup-error {
@@ -909,8 +1003,29 @@ body,
   font-size: 10px;
 }
 
+.setup-copyable {
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.setup-copyable:hover {
+  background: var(--bg-hover);
+  color: #eab308;
+}
+
+.setup-copyable[data-copied="true"] {
+  color: var(--accent);
+}
+
+.setup-copyable[data-copied="true"]::after {
+  content: " ✓ Copied!";
+  font-size: 9px;
+  color: var(--accent);
+}
+
 .setup-hint a {
-  color: #06b6d4;
+  color: #eab308;
   text-decoration: none;
 }
 
@@ -961,7 +1076,7 @@ body,
   font-size: 28px;
   font-weight: 700;
   font-family: monospace;
-  color: #06b6d4;
+  color: #eab308;
   letter-spacing: 4px;
 }
 

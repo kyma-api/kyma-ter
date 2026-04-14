@@ -39,8 +39,8 @@ export const api = {
   deleteSession: (id: string) => request<unknown>("DELETE", `/api/v1/sessions/${id}`),
 
   // Tasks
-  createTask: (title: string, agentKey: string) =>
-    request<unknown>("POST", "/api/v1/tasks", { title, agent_key: agentKey }),
+  createTask: (title: string, description?: string) =>
+    request<unknown>("POST", "/api/v1/tasks", { title, description: description || "", agent_key: "" }),
   listTasks: () => request<unknown[]>("GET", "/api/v1/tasks"),
   updateTask: (id: string, status: string) =>
     request<unknown>("PATCH", `/api/v1/tasks/${id}`, { status }),

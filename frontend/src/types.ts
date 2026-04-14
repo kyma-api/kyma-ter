@@ -41,7 +41,7 @@ export interface AgentConfig {
 }
 
 export const DEFAULT_AGENTS: Record<string, AgentConfig> = {
-  "kyma": { name: "Kyma Agent", command: "kyma", icon: "robot", color: "#06b6d4" },
+  "kyma": { name: "Kyma Agent", command: "kyma", icon: "robot", color: "#eab308" },
 };
 
 export function getAgentInfo(key: string): AgentConfig {

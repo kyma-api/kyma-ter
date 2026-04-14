@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { getAgentInfo } from "../types";
 
-export type ViewMode = "terminals" | "kanban";
-
 export interface Pane {
   id: string;
   sessionId: string;
@@ -26,12 +24,12 @@ function deriveTabName(panes: Pane[]): string {
 interface UIState {
   tabs: Tab[];
   activeTabId: string;
-  viewMode: ViewMode;
+  tasksPanelOpen: boolean;
 
   addTab: (name?: string) => string;
   removeTab: (id: string) => void;
   setActiveTab: (id: string) => void;
-  setViewMode: (mode: ViewMode) => void;
+  toggleTasksPanel: () => void;
   renameTab: (id: string, name: string) => void;
 
   addPane: (tabId: string, sessionId: string, agentKey: string) => void;
@@ -44,7 +42,7 @@ let paneCounter = 0;
 export const useUIStore = create<UIState>((set) => ({
   tabs: [{ id: "tab-0", name: "Workspace", customName: false, panes: [] }],
   activeTabId: "tab-0",
-  viewMode: "terminals",
+  tasksPanelOpen: false,
 
   addTab: (name?: string) => {
     tabCounter++;
@@ -74,7 +72,7 @@ export const useUIStore = create<UIState>((set) => ({
   },
 
   setActiveTab: (id: string) => set({ activeTabId: id }),
-  setViewMode: (mode: ViewMode) => set({ viewMode: mode }),
+  toggleTasksPanel: () => set((s) => ({ tasksPanelOpen: !s.tasksPanelOpen })),
 
   renameTab: (id: string, name: string) => {
     set((s) => ({

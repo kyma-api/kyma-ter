@@ -6,6 +6,7 @@ interface TasksState {
   tasks: Task[];
   loading: boolean;
   fetch: () => Promise<void>;
+  createTask: (title: string, description?: string) => Promise<void>;
   updateStatus: (id: string, status: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   getTaskForSession: (sessionId: string) => Task | undefined;
@@ -23,6 +24,11 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     } finally {
       set({ loading: false });
     }
+  },
+
+  createTask: async (title: string, description?: string) => {
+    await api.createTask(title, description);
+    await get().fetch();
   },
 
   updateStatus: async (id: string, status: string) => {

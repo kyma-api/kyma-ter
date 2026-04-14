@@ -54,7 +54,7 @@ function EditableTabName({ tabId, name }: { tabId: string; name: string }) {
 }
 
 export function TabBar() {
-  const { tabs, activeTabId, viewMode, setActiveTab, addTab, removeTab, setViewMode } = useUIStore();
+  const { tabs, activeTabId, setActiveTab, addTab, removeTab } = useUIStore();
 
   return (
     <div className="tab-bar">
@@ -101,22 +101,7 @@ export function TabBar() {
           </button>
         </div>
       </div>
-      <div className="tab-bar-right">
-        <div className="view-toggle">
-          <button
-            className={viewMode === "terminals" ? "active" : ""}
-            onClick={() => setViewMode("terminals")}
-          >
-            Terminals
-          </button>
-          <button
-            className={viewMode === "kanban" ? "active" : ""}
-            onClick={() => setViewMode("kanban")}
-          >
-            Tasks
-          </button>
-        </div>
-      </div>
+      <div className="tab-bar-right" />
     </div>
   );
 }

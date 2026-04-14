@@ -25,7 +25,7 @@ type Config struct {
 }
 
 var DefaultAgents = map[string]*AgentConfig{
-	"kyma": {Name: "Kyma Agent", Command: "kyma", Icon: "robot", Color: "#06b6d4"},
+	"kyma": {Name: "Kyma Agent", Command: "kyma", Icon: "robot", Color: "#eab308"},
 }
 
 func configDir() string {

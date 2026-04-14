@@ -128,7 +128,21 @@ export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
               Install Kyma Agent
             </button>
             <p className="setup-hint">
-              Or install manually: <code>npm i -g @kyma-api/agent</code>
+              Or install manually:{" "}
+              <code
+                className="setup-copyable"
+                onClick={() => {
+                  navigator.clipboard.writeText("npm i -g @kyma-api/agent");
+                  const el = document.querySelector(".setup-copyable") as HTMLElement;
+                  if (el) {
+                    el.dataset.copied = "true";
+                    setTimeout(() => { el.dataset.copied = ""; }, 1500);
+                  }
+                }}
+                title="Click to copy"
+              >
+                npm i -g @kyma-api/agent
+              </code>
             </p>
           </div>
         )}
