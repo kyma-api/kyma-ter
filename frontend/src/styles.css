@@ -1499,7 +1499,7 @@ body,
   position: relative;
   width: 720px;
   max-width: 92vw;
-  height: 520px;
+  min-height: 520px;
   max-height: 80vh;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -1585,7 +1585,7 @@ body,
 .settings-content {
   flex: 1;
   overflow-y: auto;
-  padding: 40px 48px;
+  padding: 24px 32px;
 }
 
 .settings-section {
