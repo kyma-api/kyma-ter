@@ -21,6 +21,14 @@ export function Sidebar() {
       <div className="sidebar">
         <button
           className="sidebar-btn"
+          onClick={handleAgentClick}
+          title="New Kyma Agent"
+        >
+          <span className="sidebar-psi">Ψ</span>
+          <span className="sidebar-label">Agent</span>
+        </button>
+        <button
+          className="sidebar-btn"
           onClick={() => spawnShell(activeTabId)}
           title="New Terminal"
         >
@@ -29,14 +37,6 @@ export function Sidebar() {
             <line x1="12" y1="19" x2="20" y2="19" />
           </svg>
           <span className="sidebar-label">Terminal</span>
-        </button>
-        <button
-          className="sidebar-btn"
-          onClick={handleAgentClick}
-          title="New Kyma Agent"
-        >
-          <span className="sidebar-psi">Ψ</span>
-          <span className="sidebar-label">Agent</span>
         </button>
         <div className="sidebar-spacer" />
         <button

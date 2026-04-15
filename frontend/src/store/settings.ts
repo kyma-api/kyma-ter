@@ -15,8 +15,8 @@ export interface ShortcutAction {
 }
 
 const DEFAULT_SHORTCUTS: ShortcutAction[] = [
-  { id: "newTerminal", label: "New Terminal", binding: { key: "n", metaKey: false, shiftKey: false, ctrlKey: true } },
   { id: "newKymaAgent", label: "New Kyma Agent", binding: { key: "k", metaKey: false, shiftKey: false, ctrlKey: true } },
+  { id: "newTerminal", label: "New Terminal", binding: { key: "n", metaKey: false, shiftKey: false, ctrlKey: true } },
   { id: "closePane", label: "Close Pane", binding: { key: "w", metaKey: false, shiftKey: false, ctrlKey: true } },
   { id: "newWorkspace", label: "New Workspace", binding: { key: "t", metaKey: false, shiftKey: false, ctrlKey: true } },
   { id: "agentWorkspace", label: "Agent Workspace", binding: { key: "a", metaKey: false, shiftKey: false, ctrlKey: true } },
@@ -48,7 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: "kyma-ter-settings",
-      version: 3,
+      version: 4,
       partialize: (state) => ({ shortcuts: state.shortcuts }),
       migrate: () => {
         // Reset to defaults on version bump
