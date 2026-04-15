@@ -39,16 +39,31 @@ frontend/                    React 19 + Vite + TypeScript
 
 ```bash
 make build      # Frontend + Go binary (local ./kyma-ter)
-make install    # build + copy to /opt/homebrew/bin/ and ~/.kyma/ter/bin/
+make install    # build + copy to ~/.kyma/ter/bin/kyma-ter
 make frontend   # Vite build only
 make backend    # Go build only
 make dev        # Instructions for dev mode (2 terminals)
 make clean      # Remove artifacts
 ```
 
-**IMPORTANT:** After any code change, always use `make install` (not just `make build`) to ensure the global binary is updated. There are 2 global paths that must stay in sync:
-- `/opt/homebrew/bin/kyma-ter`
+**IMPORTANT:** After any code change, use `make install` for local verification. The binary you should test is:
 - `~/.kyma/ter/bin/kyma-ter`
+
+Do **not** assume `/opt/homebrew/bin/kyma-ter` is the fresh binary. On machines with `@kyma-api/agent` installed globally, that path can be a Homebrew/npm shim pointing to the Node launcher. Overwriting that shim is a bug.
+
+Local verification flow:
+
+```bash
+cd /Users/sonpiaz/kyma-ter
+make install
+pkill -f "/Users/sonpiaz/.kyma/ter/bin/kyma-ter" || true
+nohup /Users/sonpiaz/.kyma/ter/bin/kyma-ter >/tmp/kyma-ter.log 2>&1 &
+```
+
+If the UI still looks stale after a rebuild:
+- restart `kyma-ter`
+- hard-reload the browser tab
+- check `/tmp/kyma-ter.log`
 
 ## Keyboard Shortcuts (Frontend)
 | Shortcut | Action | Defined in |
@@ -68,11 +83,24 @@ Uses `fyne.io/systray`. Icon: Ψ template icon (monochrome, macOS auto dark/ligh
 
 ## Release Process
 1. `./scripts/release.sh <version>` — cross-compile binaries to `dist/`
-2. Upload to `https://kymaapi.com/ter/releases/v{version}/`
-3. In `kyma-api` repo: bump version in `packages/kyma-agent/package.json`
-4. `npm publish @kyma-api/agent`
+2. Update `ter-latest.txt` in `kyma-releases`
+3. Upload to `https://kymaapi.com/ter/releases/v{version}/`
+4. In `kyma-api` repo: bump `kymaTerminal` in `packages/kyma-agent/package.json`
+5. `npm publish @kyma-api/agent`
 
-Auto-updater checks `kyma-releases` repo for latest version, downloads in background, applies on next restart.
+Auto-updater checks `kyma-releases` repo for latest version, downloads in background, and applies on next restart.
+It must only upgrade when `latest > current`; downgrade paths are a bug.
+
+## First-Run Testing
+
+To replay onboarding/setup intentionally:
+
+- reset `kyma-agent` onboarding:
+  - `rm -f ~/.kyma/agent/.onboarded ~/.kyma/agent/auth.json`
+- reset `kyma-ter` setup:
+  - `rm -f ~/.config/kyma-ter/config.json`
+
+Then relaunch `~/.kyma/ter/bin/kyma-ter`.
 
 ## Conventions
 - Commits: conventional format (`feat:`, `fix:`, `chore:`, `docs:`)
