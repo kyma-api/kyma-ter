@@ -2,7 +2,6 @@ import { useState } from "react";
 import { DEFAULT_AGENTS, getAgentInfo } from "../../types";
 import { useSessionsStore } from "../../store/sessions";
 import { useUIStore } from "../../store/ui";
-import { api } from "../../api/client";
 
 interface LayoutPreset {
   id: string;
@@ -59,17 +58,6 @@ export function AgentWorkspaceModal({ tabId, onClose }: Props) {
   const handleLaunch = async () => {
     setLaunching(true);
     try {
-      // Check if any Kyma agents need setup
-      const hasKyma = agents.some((a) => a !== "shell");
-      if (hasKyma) {
-        const status = await api.setupStatus();
-        if (!status.ready) {
-          alert("Please complete Kyma Agent setup first (click Agent button in sidebar).");
-          setLaunching(false);
-          return;
-        }
-      }
-
       // Create all sessions
       const createSession = useSessionsStore.getState().createSession;
       const panes: Array<{ sessionId: string; agentKey: string }> = [];

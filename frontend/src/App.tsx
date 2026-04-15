@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { TabBar } from "./components/Layout/TabBar";
 import { Sidebar } from "./components/Layout/Sidebar";
 import { PaneGrid } from "./components/Layout/PaneGrid";
 import { StatusBar } from "./components/Layout/StatusBar";
-import { SetupModal } from "./components/Setup/SetupModal";
 import { AgentWorkspaceModal } from "./components/AgentWorkspace/AgentWorkspaceModal";
 import { SettingsOverlay } from "./components/Settings/SettingsOverlay";
-import { spawnShell, spawnKymaIfReady, spawnAgent } from "./utils/spawn";
+import { spawnShell, spawnAgent } from "./utils/spawn";
 import { useSessionsStore } from "./store/sessions";
 import { useTasksStore } from "./store/tasks";
 import { useLocksStore } from "./store/locks";
@@ -18,7 +17,6 @@ function TerminalView() {
   const activeTab = useActiveTab();
   const { removePane, movePane, focusedPaneId, setFocusedPane, activeTabId } = useUIStore();
   const deleteSession = useSessionsStore((s) => s.deleteSession);
-  const [showSetup, setShowSetup] = useState(false);
 
   const handleClosePane = async (paneId: string) => {
     if (!activeTab) return;
@@ -45,18 +43,9 @@ function TerminalView() {
           onMovePane={(source, target, zone) => movePane(activeTab.id, source, target, zone)}
           onFocusPane={setFocusedPane}
           onNewTerminal={() => spawnShell(activeTabId)}
-          onNewAgent={() => spawnKymaIfReady(activeTabId, () => setShowSetup(true))}
+          onNewAgent={() => spawnAgent("kyma", activeTabId)}
         />
       </div>
-      {showSetup && (
-        <SetupModal
-          onComplete={() => {
-            setShowSetup(false);
-            spawnAgent("kyma", activeTabId);
-          }}
-          onCancel={() => setShowSetup(false)}
-        />
-      )}
     </div>
   );
 }

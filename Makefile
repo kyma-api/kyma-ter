@@ -1,4 +1,4 @@
-.PHONY: build dev frontend backend clean release-binaries
+.PHONY: build dev frontend backend clean release-binaries install
 
 VERSION ?= dev
 
@@ -30,6 +30,13 @@ release-binaries: frontend
 	GOOS=linux  GOARCH=amd64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-linux-amd64  ./cmd/kyma-ter/
 	@echo "Built v$(VERSION) binaries in dist/"
 	@ls -lh dist/
+
+# Install: build and copy to global paths
+install: build
+	cp kyma-ter /opt/homebrew/bin/kyma-ter
+	mkdir -p ~/.kyma/ter/bin
+	cp kyma-ter ~/.kyma/ter/bin/kyma-ter
+	@echo "Installed kyma-ter globally"
 
 # Clean build artifacts
 clean:
