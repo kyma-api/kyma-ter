@@ -29,6 +29,9 @@ var DefaultAgents = map[string]*AgentConfig{
 }
 
 func configDir() string {
+	if dir, err := os.UserConfigDir(); err == nil && dir != "" {
+		return filepath.Join(dir, "kyma-ter")
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "kyma-ter")
 }

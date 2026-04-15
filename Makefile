@@ -28,6 +28,8 @@ release-binaries: frontend
 	GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-darwin-amd64 ./cmd/kyma-ter/
 	GOOS=linux  GOARCH=arm64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-linux-arm64  ./cmd/kyma-ter/
 	GOOS=linux  GOARCH=amd64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-linux-amd64  ./cmd/kyma-ter/
+	GOOS=windows GOARCH=arm64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-windows-arm64.exe ./cmd/kyma-ter/
+	GOOS=windows GOARCH=amd64 go build -ldflags "-X main.Version=$(VERSION)" -o dist/kyma-ter-windows-amd64.exe ./cmd/kyma-ter/
 	@echo "Built v$(VERSION) binaries in dist/"
 	@ls -lh dist/
 

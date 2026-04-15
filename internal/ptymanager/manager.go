@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"sync"
 
 	"github.com/google/uuid"
@@ -44,11 +46,24 @@ func (m *Manager) Spawn(agentKey string, command string, args []string, envVars 
 
 	var cmd *exec.Cmd
 	if command == "" {
-		shell := os.Getenv("SHELL")
-		if shell == "" {
-			shell = "/bin/bash"
+		switch runtime.GOOS {
+		case "windows":
+			shell := os.Getenv("COMSPEC")
+			if shell == "" {
+				shell = "powershell.exe"
+			}
+			if filepath.Base(shell) == "cmd.exe" {
+				cmd = exec.Command(shell)
+			} else {
+				cmd = exec.Command(shell, "-NoLogo")
+			}
+		default:
+			shell := os.Getenv("SHELL")
+			if shell == "" {
+				shell = "/bin/bash"
+			}
+			cmd = exec.Command(shell, "-l")
 		}
-		cmd = exec.Command(shell, "-l")
 	} else {
 		cmd = exec.Command(command, args...)
 	}

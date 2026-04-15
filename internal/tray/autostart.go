@@ -59,15 +59,19 @@ func disableAutoStart() error {
 }
 
 func autoStartPath() string {
-	home, err := os.UserHomeDir()
+	configRoot, err := os.UserConfigDir()
 	if err != nil {
 		return ""
 	}
 	switch runtime.GOOS {
 	case "darwin":
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
 		return filepath.Join(home, "Library", "LaunchAgents", launchdLabel+".plist")
 	case "linux":
-		return filepath.Join(home, ".config", "autostart", "kyma-ter.desktop")
+		return filepath.Join(configRoot, "autostart", "kyma-ter.desktop")
 	}
 	return ""
 }
