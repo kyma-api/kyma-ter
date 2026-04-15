@@ -33,10 +33,17 @@ release-binaries: frontend
 
 # Install: build and copy to global paths
 install: build
-	cp kyma-ter /opt/homebrew/bin/kyma-ter
 	mkdir -p ~/.kyma/ter/bin
 	cp kyma-ter ~/.kyma/ter/bin/kyma-ter
-	@echo "Installed kyma-ter globally"
+	@echo "Installed kyma-ter to ~/.kyma/ter/bin/kyma-ter"
+	@if [ -L /opt/homebrew/bin/kyma-ter ]; then \
+		echo "Skipped /opt/homebrew/bin/kyma-ter (existing npm/Homebrew shim)"; \
+	elif [ -e /opt/homebrew/bin/kyma-ter ]; then \
+		cp kyma-ter /opt/homebrew/bin/kyma-ter; \
+		echo "Updated /opt/homebrew/bin/kyma-ter"; \
+	else \
+		echo "No /opt/homebrew/bin/kyma-ter found; PATH launcher unchanged"; \
+	fi
 
 # Clean build artifacts
 clean:

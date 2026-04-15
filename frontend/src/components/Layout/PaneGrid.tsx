@@ -36,7 +36,7 @@ export function PaneGrid({ tab, focusedPaneId, onClosePane, onMovePane, onFocusP
             <span>Terminal</span>
           </button>
         </div>
-        <span className="empty-hint-keys">Ctrl+K &middot; Ctrl+A</span>
+        <span className="empty-hint-keys">Ctrl+K New Kyma Agent &middot; Ctrl+A Agent Workspace</span>
       </div>
     );
   }
