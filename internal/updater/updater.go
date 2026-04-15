@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -70,7 +71,12 @@ func check(currentVersion string) error {
 		return err
 	}
 
-	if latest == currentVersion {
+	cmp, err := compareVersions(latest, currentVersion)
+	if err != nil {
+		return err
+	}
+
+	if cmp <= 0 {
 		return nil
 	}
 
@@ -97,6 +103,45 @@ func check(currentVersion string) error {
 	_ = os.WriteFile(versionPath(), []byte(latest), 0644)
 
 	return nil
+}
+
+func compareVersions(a, b string) (int, error) {
+	parse := func(v string) ([3]int, error) {
+		var out [3]int
+		v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
+		parts := strings.Split(v, ".")
+		if len(parts) != 3 {
+			return out, fmt.Errorf("invalid version %q", v)
+		}
+		for i, part := range parts {
+			n, err := strconv.Atoi(part)
+			if err != nil {
+				return out, fmt.Errorf("invalid version %q", v)
+			}
+			out[i] = n
+		}
+		return out, nil
+	}
+
+	va, err := parse(a)
+	if err != nil {
+		return 0, err
+	}
+	vb, err := parse(b)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := range va {
+		if va[i] > vb[i] {
+			return 1, nil
+		}
+		if va[i] < vb[i] {
+			return -1, nil
+		}
+	}
+
+	return 0, nil
 }
 
 func fetchLatestVersion() (string, error) {
