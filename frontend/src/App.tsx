@@ -5,7 +5,7 @@ import { PaneGrid } from "./components/Layout/PaneGrid";
 import { StatusBar } from "./components/Layout/StatusBar";
 import { SetupModal } from "./components/Setup/SetupModal";
 import { AgentWorkspaceModal } from "./components/AgentWorkspace/AgentWorkspaceModal";
-import { SettingsPage } from "./components/Settings/SettingsPage";
+import { SettingsOverlay } from "./components/Settings/SettingsOverlay";
 import { spawnShell, spawnKymaIfReady, spawnAgent } from "./utils/spawn";
 import { useSessionsStore } from "./store/sessions";
 import { useTasksStore } from "./store/tasks";
@@ -34,15 +34,6 @@ function TerminalView() {
   };
 
   if (!activeTab) return null;
-
-  // Settings tab renders the settings page
-  if (activeTab.type === "settings") {
-    return (
-      <div className="terminal-view">
-        <SettingsPage />
-      </div>
-    );
-  }
 
   return (
     <div className="terminal-view">
@@ -124,6 +115,7 @@ export default function App() {
   }, []);
 
   const agentWorkspaceOpen = useUIStore((s) => s.agentWorkspaceOpen);
+  const settingsOpen = useUIStore((s) => s.settingsOpen);
   const activeTabId = useUIStore((s) => s.activeTabId);
 
   return (
@@ -140,6 +132,11 @@ export default function App() {
         <AgentWorkspaceModal
           tabId={activeTabId}
           onClose={() => useUIStore.getState().setAgentWorkspaceOpen(false)}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsOverlay
+          onClose={() => useUIStore.getState().setSettingsOpen(false)}
         />
       )}
     </div>

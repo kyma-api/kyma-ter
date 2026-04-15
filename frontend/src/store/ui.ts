@@ -116,23 +116,7 @@ export const useUIStore = create<UIState>()(
       toggleTasksPanel: () => set((s) => ({ tasksPanelOpen: !s.tasksPanelOpen })),
       setFocusedPane: (id: string | null) => set({ focusedPaneId: id }),
       setAgentWorkspaceOpen: (open: boolean) => set({ agentWorkspaceOpen: open }),
-      setSettingsOpen: (open: boolean) => {
-        if (open) {
-          // Find existing settings tab or create one
-          const state = get();
-          const existing = state.tabs.find((t) => t.type === "settings");
-          if (existing) {
-            set({ activeTabId: existing.id, settingsOpen: true });
-          } else {
-            tabCounter++;
-            const id = `tab-${tabCounter}`;
-            const tab: Tab = { id, name: "Settings", customName: true, type: "settings", layout: null, panes: {} };
-            set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id, settingsOpen: true }));
-          }
-        } else {
-          set({ settingsOpen: false });
-        }
-      },
+      setSettingsOpen: (open: boolean) => set({ settingsOpen: open }),
 
       nextTab: () => {
         set((s) => {

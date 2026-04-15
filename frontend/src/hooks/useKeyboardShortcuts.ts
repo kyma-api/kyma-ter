@@ -32,14 +32,13 @@ export function useKeyboardShortcuts() {
           }
 
           case "closePane": {
-            const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
-            if (!activeTab) break;
-            // Close settings tab directly
-            if (activeTab.type === "settings") {
-              ui.removeTab(activeTab.id);
+            // If settings overlay is open, close it instead
+            if (ui.settingsOpen) {
               ui.setSettingsOpen(false);
               break;
             }
+            const activeTab = ui.tabs.find((t) => t.id === ui.activeTabId);
+            if (!activeTab) break;
             const panesArr = getTabPanesArray(activeTab);
             if (panesArr.length === 0) break;
             const paneToClose = panesArr.find((p) => p.id === ui.focusedPaneId)
@@ -62,7 +61,7 @@ export function useKeyboardShortcuts() {
           }
 
           case "settings": {
-            ui.setSettingsOpen(true);
+            ui.setSettingsOpen(!ui.settingsOpen);
             break;
           }
         }

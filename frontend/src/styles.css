@@ -1479,10 +1479,61 @@ body,
 }
 
 /* ── Settings Page (Tab) ─────────────────────────────────────────────── */
+/* ── Settings Overlay ── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: settingsFadeIn 0.15s ease-out;
+}
+@keyframes settingsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.settings-panel {
+  position: relative;
+  width: 720px;
+  max-width: 92vw;
+  height: 520px;
+  max-height: 80vh;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  animation: settingsSlideIn 0.15s ease-out;
+}
+@keyframes settingsSlideIn {
+  from { opacity: 0; transform: scale(0.97) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.settings-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+}
+.settings-close-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .settings-page {
   display: flex;
   height: 100%;
-  background: var(--bg);
+  background: var(--bg-elevated);
 }
 
 .settings-nav {
@@ -1493,7 +1544,7 @@ body,
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--bg-elevated);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .settings-nav-title {
