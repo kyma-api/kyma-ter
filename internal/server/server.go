@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -22,11 +24,11 @@ import (
 )
 
 type Server struct {
-	cfg       *config.Config
-	db        *db.DB
-	pty       *ptymanager.Manager
-	events    *wsbridge.EventBroadcaster
-	router    *mux.Router
+	cfg        *config.Config
+	db         *db.DB
+	pty        *ptymanager.Manager
+	events     *wsbridge.EventBroadcaster
+	router     *mux.Router
 	frontendFS fs.FS // embedded frontend, nil in dev mode
 }
 
@@ -63,6 +65,106 @@ func New(cfg *config.Config, database *db.DB, frontendFS ...fs.FS) *Server {
 	go s.orphanSessionCleanup()
 
 	return s
+}
+
+func lookupCommand(name string) (string, bool) {
+	path, err := exec.LookPath(name)
+	return path, err == nil
+}
+
+func commandOutput(timeout time.Duration, name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, name, args...).CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+func detectWSL() (installed bool, distro string) {
+	if runtime.GOOS != "windows" {
+		return false, ""
+	}
+	if _, ok := lookupCommand("wsl.exe"); !ok {
+		return false, ""
+	}
+	out, err := commandOutput(3*time.Second, "wsl.exe", "--status")
+	if err != nil && strings.TrimSpace(out) == "" {
+		return false, ""
+	}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		lower := strings.ToLower(line)
+		if strings.HasPrefix(lower, "default distribution:") {
+			return true, strings.TrimSpace(strings.TrimSpace(line[len("Default Distribution:"):]))
+		}
+	}
+	return true, ""
+}
+
+func readKymaAccessToken() string {
+	home, _ := os.UserHomeDir()
+	authPath := filepath.Join(home, ".kyma", "agent", "auth.json")
+	data, err := os.ReadFile(authPath)
+	if err != nil {
+		return ""
+	}
+	var auth struct {
+		Kyma struct {
+			Access string `json:"access"`
+		} `json:"kyma"`
+	}
+	if err := json.Unmarshal(data, &auth); err != nil {
+		return ""
+	}
+	return auth.Kyma.Access
+}
+
+func appendWSLEnv(existing string, names ...string) string {
+	seen := map[string]bool{}
+	var values []string
+	for _, part := range strings.Split(existing, ":") {
+		part = strings.TrimSpace(part)
+		if part == "" || seen[part] {
+			continue
+		}
+		seen[part] = true
+		values = append(values, part)
+	}
+	for _, name := range names {
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		values = append(values, name)
+	}
+	return strings.Join(values, ":")
+}
+
+func prepareSessionCommand(agentKey, command string, args []string, envVars map[string]string) (string, []string, map[string]string) {
+	if runtime.GOOS != "windows" {
+		return command, args, envVars
+	}
+	wslInstalled, _ := detectWSL()
+	if !wslInstalled {
+		return command, args, envVars
+	}
+
+	if agentKey == "shell" && command == "" {
+		return "wsl.exe", nil, envVars
+	}
+
+	if agentKey == "kyma" && command == "kyma" {
+		if envVars == nil {
+			envVars = make(map[string]string)
+		}
+		if envVars["KYMA_API_KEY"] == "" {
+			if token := readKymaAccessToken(); token != "" {
+				envVars["KYMA_API_KEY"] = token
+			}
+		}
+		envVars["KYMA_WINDOWS_RUNTIME"] = "native"
+	}
+
+	return command, args, envVars
 }
 
 func (s *Server) registerRoutes() {
@@ -360,6 +462,7 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 	// Check if kyma CLI is installed
 	kymaPath, err := exec.LookPath("kyma")
 	cliInstalled := err == nil
+	wslInstalled, wslDistro := detectWSL()
 
 	// Check if logged in via ~/.kyma/agent/auth.json
 	loggedIn, email := checkKymaAuth()
@@ -374,6 +477,9 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 		"email":         email,
 		"has_api_key":   hasKey,
 		"ready":         cliInstalled && (loggedIn || hasKey),
+		"platform":      runtime.GOOS,
+		"wsl_installed": wslInstalled,
+		"wsl_distro":    wslDistro,
 	})
 }
 
@@ -577,11 +683,11 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		AgentKey string `json:"agent_key"`
-		Command  string `json:"command"`
+		AgentKey string   `json:"agent_key"`
+		Command  string   `json:"command"`
 		Args     []string `json:"args"`
-		Cols     uint16 `json:"cols"`
-		Rows     uint16 `json:"rows"`
+		Cols     uint16   `json:"cols"`
+		Rows     uint16   `json:"rows"`
 	}
 	if err := decodeBody(r, &req); err != nil {
 		writeError(w, 400, "invalid request body")
@@ -602,6 +708,13 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 	// Inject Kyma API key for kyma agent
 	envVars = s.injectKymaEnv(req.AgentKey, envVars)
+	command, args, envVars = prepareSessionCommand(req.AgentKey, command, args, envVars)
+	if runtime.GOOS == "windows" && command == "wsl.exe" {
+		if envVars == nil {
+			envVars = make(map[string]string)
+		}
+		envVars["WSLENV"] = appendWSLEnv(envVars["WSLENV"], "KYMA_API_KEY", "KYMA_SESSION_ID", "KYMA_AGENT_KEY")
+	}
 
 	session, err := s.pty.Spawn(req.AgentKey, command, args, envVars, req.Cols, req.Rows)
 	if err != nil {

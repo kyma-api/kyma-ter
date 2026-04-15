@@ -7,6 +7,17 @@ interface SetupModalProps {
 }
 
 type Step = "checking" | "install" | "installing" | "login" | "polling" | "api-key" | "ready";
+type SetupStatus = {
+  cli_installed: boolean;
+  cli_path: string;
+  logged_in: boolean;
+  email: string;
+  has_api_key: boolean;
+  ready: boolean;
+  platform: string;
+  wsl_installed: boolean;
+  wsl_distro: string;
+};
 
 export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
   const [step, setStep] = useState<Step>("checking");
@@ -15,6 +26,7 @@ export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
   const [verificationUrl, setVerificationUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [status, setStatus] = useState<SetupStatus | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -26,11 +38,12 @@ export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
 
   const checkStatus = async () => {
     try {
-      const status = await api.setupStatus();
-      if (status.ready) {
+      const nextStatus = await api.setupStatus();
+      setStatus(nextStatus);
+      if (nextStatus.ready) {
         setStep("ready");
         setTimeout(onComplete, 500);
-      } else if (!status.cli_installed) {
+      } else if (!nextStatus.cli_installed) {
         setStep("install");
       } else {
         setStep("login");
@@ -123,6 +136,12 @@ export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
             <p className="setup-desc">
               Kyma Agent CLI is required to run AI agents in your terminal.
             </p>
+            {status?.platform === "windows" && (
+              <p className="setup-hint">
+                Windows support is available. For the best <code>kyma-ter</code> shell experience, use WSL2
+                {status.wsl_installed ? ` (${status.wsl_distro || "default distro"} detected)` : " (not detected yet)"}.
+              </p>
+            )}
             {error && <p className="setup-error">{error}</p>}
             <button className="setup-btn primary" onClick={handleInstall}>
               Install Kyma Agent
@@ -160,6 +179,11 @@ export function SetupModal({ onComplete, onCancel }: SetupModalProps) {
             <p className="setup-desc">
               One account, many AI models. Sign in or create an account to get started.
             </p>
+            {status?.platform === "windows" && (
+              <p className="setup-hint">
+                <code>kyma</code> runs natively on Windows. <code>kyma-ter</code> shell panes prefer WSL2 when available.
+              </p>
+            )}
             {error && <p className="setup-error">{error}</p>}
             <button className="setup-btn primary" onClick={handleLogin}>
               Sign in with Kyma

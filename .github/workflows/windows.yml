@@ -1,0 +1,73 @@
+name: Windows Checks
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows.yml"
+      - "cmd/**"
+      - "internal/**"
+      - "frontend/**"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+      - ".github/workflows/windows.yml"
+      - "cmd/**"
+      - "internal/**"
+      - "frontend/**"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSYS2 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Run Go tests
+        run: go test ./...
+        env:
+          CC: C:\msys64\mingw64\bin\gcc.exe
+
+      - name: Build kyma-ter for Windows amd64
+        run: go build -o kyma-ter.exe ./cmd/kyma-ter
+        env:
+          CC: C:\msys64\mingw64\bin\gcc.exe

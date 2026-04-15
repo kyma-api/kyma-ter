@@ -55,6 +55,9 @@ export const api = {
       email: string;
       has_api_key: boolean;
       ready: boolean;
+      platform: string;
+      wsl_installed: boolean;
+      wsl_distro: string;
     }>("GET", "/api/v1/setup/status"),
   saveKey: (apiKey: string) =>
     request<{ status: string }>("POST", "/api/v1/setup/save-key", { api_key: apiKey }),
