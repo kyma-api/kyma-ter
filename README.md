@@ -12,18 +12,24 @@ Kyma Ter runs a local Go server, serves an embedded frontend, and lets you run K
 
 Kyma Ter is distributed through the `@kyma-api/agent` npm package.
 
-Install:
+**Recommended — curl installer:**
+
+```bash
+curl -fsSL https://kymaapi.com/install.sh | bash
+```
+
+The install script detects your OS, installs Node.js if needed, runs `npm install -g @kyma-api/agent`, and the postinstall step downloads the `kyma-ter` binary into `~/.kyma/ter/bin/`.
+
+**Alternative — npm directly:**
 
 ```bash
 npm install -g @kyma-api/agent
 ```
 
-That package installs:
+Both methods install:
 
 - `kyma`
 - `kyma-ter`
-
-The npm install step downloads the local `kyma-ter` binary into `~/.kyma/ter/bin/`.
 
 ## What Kyma Ter Does
 
