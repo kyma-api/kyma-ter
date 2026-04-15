@@ -24,6 +24,10 @@ export function PaneGrid({ tab, focusedPaneId, onClosePane, onMovePane, onFocusP
  ██║  ██╗   ██║   ██║ ╚═╝ ██║██║  ██║
  ╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝`}</pre>
         <div className="empty-actions">
+          <button className="empty-action-btn empty-pill-agent" onClick={onNewAgent}>
+            <span className="empty-psi">Ψ</span>
+            <span>Kyma Agent</span>
+          </button>
           <button className="empty-action-btn empty-pill-terminal" onClick={onNewTerminal}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="4 17 10 11 4 5" />
@@ -31,12 +35,8 @@ export function PaneGrid({ tab, focusedPaneId, onClosePane, onMovePane, onFocusP
             </svg>
             <span>Terminal</span>
           </button>
-          <button className="empty-action-btn empty-pill-agent" onClick={onNewAgent}>
-            <span className="empty-psi">Ψ</span>
-            <span>Kyma Agent</span>
-          </button>
         </div>
-        <span className="empty-hint-keys">Ctrl+N terminal &middot; Ctrl+A agent workspace</span>
+        <span className="empty-hint-keys">Ctrl+K &middot; Ctrl+A</span>
       </div>
     );
   }
