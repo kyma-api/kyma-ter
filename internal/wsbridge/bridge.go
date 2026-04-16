@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/sonpiaz/kyma-ter/internal/ptymanager"
+	"github.com/kyma-api/kyma-ter/internal/ptymanager"
 )
 
 var upgrader = websocket.Upgrader{

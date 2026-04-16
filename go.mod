@@ -1,4 +1,4 @@
-module github.com/sonpiaz/kyma-ter
+module github.com/kyma-api/kyma-ter
 
 go 1.26.1
 

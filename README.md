@@ -133,3 +133,7 @@ See:
 
 This repo is the runtime source of truth for Kyma Ter behavior.
 Public docs should be derived from this codebase, not the other way around.
+
+Open-source preparation checklist:
+
+- `./OPEN-SOURCE-CHECKLIST.md`

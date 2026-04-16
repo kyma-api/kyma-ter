@@ -7,3 +7,7 @@ frontend/dist/
 *.db-wal
 *.db-shm
 .DS_Store
+.playwright-mcp/
+video-footage/
+.codex-context.md
+CLAUDE.md

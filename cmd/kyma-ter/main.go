@@ -5,12 +5,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/sonpiaz/kyma-ter/internal/config"
-	"github.com/sonpiaz/kyma-ter/internal/db"
-	"github.com/sonpiaz/kyma-ter/internal/server"
-	"github.com/sonpiaz/kyma-ter/internal/tray"
-	"github.com/sonpiaz/kyma-ter/internal/updater"
-	"github.com/sonpiaz/kyma-ter/internal/web"
+	"github.com/kyma-api/kyma-ter/internal/config"
+	"github.com/kyma-api/kyma-ter/internal/db"
+	"github.com/kyma-api/kyma-ter/internal/server"
+	"github.com/kyma-api/kyma-ter/internal/tray"
+	"github.com/kyma-api/kyma-ter/internal/updater"
+	"github.com/kyma-api/kyma-ter/internal/web"
 	"github.com/spf13/cobra"
 )
 

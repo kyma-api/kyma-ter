@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/sonpiaz/kyma-ter/internal/config"
-	"github.com/sonpiaz/kyma-ter/internal/db"
-	"github.com/sonpiaz/kyma-ter/internal/ptymanager"
-	"github.com/sonpiaz/kyma-ter/internal/wsbridge"
+	"github.com/kyma-api/kyma-ter/internal/config"
+	"github.com/kyma-api/kyma-ter/internal/db"
+	"github.com/kyma-api/kyma-ter/internal/ptymanager"
+	"github.com/kyma-api/kyma-ter/internal/wsbridge"
 )
 
 type Server struct {
