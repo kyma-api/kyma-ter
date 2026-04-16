@@ -10,17 +10,18 @@ import { useSessionsStore } from "./store/sessions";
 import { useTasksStore } from "./store/tasks";
 import { useLocksStore } from "./store/locks";
 import { useEventsStore } from "./store/events";
-import { useUIStore, useActiveTab } from "./store/ui";
+import { useUIStore } from "./store/ui";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
-function TerminalView() {
-  const activeTab = useActiveTab();
+function TerminalWorkspaceView({ tabId, active }: { tabId: string; active: boolean }) {
+  const tabs = useUIStore((s) => s.tabs);
+  const tab = tabs.find((item) => item.id === tabId);
   const { removePane, movePane, focusedPaneId, setFocusedPane, activeTabId } = useUIStore();
   const deleteSession = useSessionsStore((s) => s.deleteSession);
 
   const handleClosePane = async (paneId: string) => {
-    if (!activeTab) return;
-    const pane = activeTab.panes[paneId];
+    if (!tab) return;
+    const pane = tab.panes[paneId];
     if (pane) {
       try {
         await deleteSession(pane.sessionId);
@@ -28,19 +29,19 @@ function TerminalView() {
         // Session may already be gone
       }
     }
-    removePane(activeTab.id, paneId);
+    removePane(tab.id, paneId);
   };
 
-  if (!activeTab) return null;
+  if (!tab) return null;
 
   return (
-    <div className="terminal-view">
+    <div className={`terminal-view ${active ? "active" : "hidden"}`}>
       <div className="pane-area">
         <PaneGrid
-          tab={activeTab}
-          focusedPaneId={focusedPaneId}
+          tab={tab}
+          focusedPaneId={active ? focusedPaneId : null}
           onClosePane={handleClosePane}
-          onMovePane={(source, target, zone) => movePane(activeTab.id, source, target, zone)}
+          onMovePane={(source, target, zone) => movePane(tab.id, source, target, zone)}
           onFocusPane={setFocusedPane}
           onNewTerminal={() => spawnShell(activeTabId)}
           onNewAgent={() => spawnAgent("kyma", activeTabId)}
@@ -106,6 +107,7 @@ export default function App() {
   const agentWorkspaceOpen = useUIStore((s) => s.agentWorkspaceOpen);
   const settingsOpen = useUIStore((s) => s.settingsOpen);
   const activeTabId = useUIStore((s) => s.activeTabId);
+  const tabs = useUIStore((s) => s.tabs);
 
   return (
     <div className="app">
@@ -113,7 +115,13 @@ export default function App() {
       <div className="app-body">
         <Sidebar />
         <div className="main-content">
-          <TerminalView />
+          {tabs.map((tab) => (
+            <TerminalWorkspaceView
+              key={tab.id}
+              tabId={tab.id}
+              active={tab.id === activeTabId}
+            />
+          ))}
         </div>
       </div>
       <StatusBar />
