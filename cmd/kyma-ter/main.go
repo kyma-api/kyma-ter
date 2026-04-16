@@ -70,7 +70,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	srv := server.New(cfg, database, web.FrontendFS())
 
-	if !flagNoTray {
+	if !flagNoTray && tray.Supported() {
 		// HTTP server runs in background goroutine
 		go func() {
 			if err := srv.Run(); err != nil {
@@ -85,6 +85,10 @@ func runServe(cmd *cobra.Command, args []string) error {
 		})
 		trayApp.Run()
 		return nil
+	}
+
+	if !flagNoTray && !tray.Supported() {
+		log.Printf("tray unavailable in this build; starting without tray")
 	}
 
 	return srv.Run()

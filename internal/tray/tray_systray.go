@@ -1,9 +1,10 @@
+//go:build cgo && (darwin || linux || windows)
+
 package tray
 
 import (
 	"fmt"
 	"log"
-	"os/exec"
 	"runtime"
 
 	"fyne.io/systray"
@@ -14,19 +15,12 @@ func init() {
 	runtime.LockOSThread()
 }
 
-// App manages the system tray icon and menu.
-type App struct {
-	port   int
-	onQuit func()
+// Supported reports whether native tray support is available in this build.
+func Supported() bool {
+	return true
 }
 
-// New creates a tray app that links to the given port.
-func New(port int, onQuit func()) *App {
-	return &App{port: port, onQuit: onQuit}
-}
-
-// Run blocks the calling goroutine (must be main thread on macOS).
-// It runs the system tray event loop until Quit is triggered.
+// Run blocks the calling goroutine when native tray support is available.
 func (a *App) Run() {
 	systray.Run(a.onReady, a.onExit)
 }
@@ -68,23 +62,5 @@ func (a *App) onReady() {
 func (a *App) onExit() {
 	if a.onQuit != nil {
 		a.onQuit()
-	}
-}
-
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", url)
-	case "linux":
-		cmd = exec.Command("xdg-open", url)
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	default:
-		log.Printf("tray: unsupported platform for browser launch: %s", runtime.GOOS)
-		return
-	}
-	if err := cmd.Start(); err != nil {
-		log.Printf("tray: open browser: %v", err)
 	}
 }
