@@ -1,6 +1,7 @@
 package updater
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,9 +13,16 @@ import (
 )
 
 const (
-	versionURL = "https://raw.githubusercontent.com/sonpiaz/kyma-releases/main/ter-latest.txt"
-	downloadFmt = "https://github.com/sonpiaz/kyma-releases/releases/download/ter-v%s/kyma-ter-%s-%s"
+	releasesRepo          = "kyma-api/kyma-ter"
+	legacyVersionURL      = "https://raw.githubusercontent.com/sonpiaz/kyma-releases/main/ter-latest.txt"
+	downloadFmt           = "https://github.com/kyma-api/kyma-ter/releases/download/ter-v%s/kyma-ter-%s-%s"
+	legacyDownloadFmt     = "https://github.com/sonpiaz/kyma-releases/releases/download/ter-v%s/kyma-ter-%s-%s"
+	githubLatestReleaseAPI = "https://api.github.com/repos/" + releasesRepo + "/releases/latest"
 )
+
+type githubLatestRelease struct {
+	TagName string `json:"tag_name"`
+}
 
 func kymaDir() string {
 	home, _ := os.UserHomeDir()
@@ -95,8 +103,11 @@ func check(currentVersion string) error {
 	dest := newBinPath()
 
 	if err := downloadBinary(url, dest); err != nil {
-		_ = os.Remove(dest)
-		return err
+		legacyURL := fmt.Sprintf(legacyDownloadFmt, latest, goos, goarch)
+		if err := downloadBinary(legacyURL, dest); err != nil {
+			_ = os.Remove(dest)
+			return err
+		}
 	}
 
 	// Write the new version so postinstall stays in sync
@@ -105,47 +116,32 @@ func check(currentVersion string) error {
 	return nil
 }
 
-func compareVersions(a, b string) (int, error) {
-	parse := func(v string) ([3]int, error) {
-		var out [3]int
-		v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
-		parts := strings.Split(v, ".")
-		if len(parts) != 3 {
-			return out, fmt.Errorf("invalid version %q", v)
-		}
-		for i, part := range parts {
-			n, err := strconv.Atoi(part)
-			if err != nil {
-				return out, fmt.Errorf("invalid version %q", v)
+func fetchLatestVersion() (string, error) {
+	req, err := http.NewRequest(http.MethodGet, githubLatestReleaseAPI, nil)
+	if err == nil {
+		req.Header.Set("Accept", "application/vnd.github+json")
+		req.Header.Set("User-Agent", "kyma-ter-updater")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == 200 {
+				var payload githubLatestRelease
+				if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&payload); err == nil {
+					tag := strings.TrimSpace(strings.TrimPrefix(payload.TagName, "ter-v"))
+					if tag != "" {
+						return tag, nil
+					}
+				}
 			}
-			out[i] = n
-		}
-		return out, nil
-	}
-
-	va, err := parse(a)
-	if err != nil {
-		return 0, err
-	}
-	vb, err := parse(b)
-	if err != nil {
-		return 0, err
-	}
-
-	for i := range va {
-		if va[i] > vb[i] {
-			return 1, nil
-		}
-		if va[i] < vb[i] {
-			return -1, nil
 		}
 	}
 
-	return 0, nil
+	return fetchLegacyLatestVersion()
 }
 
-func fetchLatestVersion() (string, error) {
-	resp, err := http.Get(versionURL)
+func fetchLegacyLatestVersion() (string, error) {
+	resp, err := http.Get(legacyVersionURL)
 	if err != nil {
 		return "", err
 	}
@@ -185,4 +181,43 @@ func downloadBinary(url, dest string) error {
 
 	_, err = io.Copy(f, resp.Body)
 	return err
+}
+
+func compareVersions(a, b string) (int, error) {
+	parse := func(v string) ([3]int, error) {
+		var out [3]int
+		v = strings.TrimSpace(strings.TrimPrefix(v, "v"))
+		parts := strings.Split(v, ".")
+		if len(parts) != 3 {
+			return out, fmt.Errorf("invalid version %q", v)
+		}
+		for i, part := range parts {
+			n, err := strconv.Atoi(part)
+			if err != nil {
+				return out, fmt.Errorf("invalid version %q", v)
+			}
+			out[i] = n
+		}
+		return out, nil
+	}
+
+	va, err := parse(a)
+	if err != nil {
+		return 0, err
+	}
+	vb, err := parse(b)
+	if err != nil {
+		return 0, err
+	}
+
+	for i := range va {
+		if va[i] > vb[i] {
+			return 1, nil
+		}
+		if va[i] < vb[i] {
+			return -1, nil
+		}
+	}
+
+	return 0, nil
 }

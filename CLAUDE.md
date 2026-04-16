@@ -83,12 +83,12 @@ Uses `fyne.io/systray`. Icon: Ψ template icon (monochrome, macOS auto dark/ligh
 
 ## Release Process
 1. `./scripts/release.sh <version>` — cross-compile binaries to `dist/`
-2. Update `ter-latest.txt` in `kyma-releases`
-3. Upload to `https://kymaapi.com/ter/releases/v{version}/`
+2. Create/update GitHub Release `ter-v{version}` in `kyma-api/kyma-ter`
+3. Upload release assets there
 4. In `kyma-api` repo: bump `kymaTerminal` in `packages/kyma-agent/package.json`
 5. `npm publish @kyma-api/agent`
 
-Auto-updater checks `kyma-releases` repo for latest version, downloads in background, and applies on next restart.
+Auto-updater checks the canonical `kyma-api/kyma-ter` GitHub Release for latest version, downloads in background, and applies on next restart.
 It must only upgrade when `latest > current`; downgrade paths are a bug.
 
 ## First-Run Testing

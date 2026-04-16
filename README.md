@@ -31,6 +31,21 @@ Both methods install:
 - `kyma`
 - `kyma-ter`
 
+## Windows Support
+
+Current support position:
+
+- `kyma` is intended to run natively on Windows
+- `kyma-ter` is available on Windows as a beta experience
+- for the best shell-pane experience in `kyma-ter`, use WSL2
+
+Recommended Windows setup:
+
+1. install `@kyma-api/agent`
+2. run `kyma` in PowerShell or Windows Terminal
+3. run `kyma-ter`
+4. use WSL2 for shell panes inside the workspace
+
 ## What Kyma Ter Does
 
 Kyma Ter is built for local, parallel terminal work:
@@ -89,17 +104,19 @@ Kyma Ter uses:
 
 - `~/.kyma/ter/bin/kyma-ter`
 - `~/.kyma/ter/version`
-- `~/.config/kyma-ter/config.json`
-- `~/.config/kyma-ter/*.db`
+- config dir from the OS user config directory, for example:
+  - macOS/Linux: `~/.config/kyma-ter/`
+  - Windows: `%AppData%\kyma-ter\`
 
 ## Release Relationship
 
 When releasing a new Kyma Ter build:
 
 1. build new binaries from this repo
-2. update the pinned `kymaTerminal` version in `kyma-api/packages/kyma-agent/package.json`
-3. publish `@kyma-api/agent`
-4. sync public docs and READMEs
+2. create or update the GitHub Release in `kyma-api/kyma-ter`
+3. update the pinned `kymaTerminal` version in `kyma-api/packages/kyma-agent/package.json`
+4. publish `@kyma-api/agent`
+5. sync public docs and READMEs
 
 See:
 
