@@ -13,11 +13,14 @@ import (
 )
 
 const (
-	releasesRepo          = "kyma-api/kyma-ter"
+	releasesRepo          = "kyma-api/kyma-ter-releases"
+	sourceReleasesRepo    = "kyma-api/kyma-ter"
 	legacyVersionURL      = "https://raw.githubusercontent.com/sonpiaz/kyma-releases/main/ter-latest.txt"
-	downloadFmt           = "https://github.com/kyma-api/kyma-ter/releases/download/ter-v%s/kyma-ter-%s-%s"
+	downloadFmt           = "https://github.com/kyma-api/kyma-ter-releases/releases/download/ter-v%s/kyma-ter-%s-%s"
+	sourceDownloadFmt     = "https://github.com/kyma-api/kyma-ter/releases/download/ter-v%s/kyma-ter-%s-%s"
 	legacyDownloadFmt     = "https://github.com/sonpiaz/kyma-releases/releases/download/ter-v%s/kyma-ter-%s-%s"
 	githubLatestReleaseAPI = "https://api.github.com/repos/" + releasesRepo + "/releases/latest"
+	sourceLatestReleaseAPI = "https://api.github.com/repos/" + sourceReleasesRepo + "/releases/latest"
 )
 
 type githubLatestRelease struct {
@@ -103,10 +106,13 @@ func check(currentVersion string) error {
 	dest := newBinPath()
 
 	if err := downloadBinary(url, dest); err != nil {
-		legacyURL := fmt.Sprintf(legacyDownloadFmt, latest, goos, goarch)
-		if err := downloadBinary(legacyURL, dest); err != nil {
-			_ = os.Remove(dest)
-			return err
+		sourceURL := fmt.Sprintf(sourceDownloadFmt, latest, goos, goarch)
+		if err := downloadBinary(sourceURL, dest); err != nil {
+			legacyURL := fmt.Sprintf(legacyDownloadFmt, latest, goos, goarch)
+			if err := downloadBinary(legacyURL, dest); err != nil {
+				_ = os.Remove(dest)
+				return err
+			}
 		}
 	}
 
@@ -117,26 +123,12 @@ func check(currentVersion string) error {
 }
 
 func fetchLatestVersion() (string, error) {
-	req, err := http.NewRequest(http.MethodGet, githubLatestReleaseAPI, nil)
-	if err == nil {
-		req.Header.Set("Accept", "application/vnd.github+json")
-		req.Header.Set("User-Agent", "kyma-ter-updater")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err == nil {
-			defer resp.Body.Close()
-			if resp.StatusCode == 200 {
-				var payload githubLatestRelease
-				if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&payload); err == nil {
-					tag := strings.TrimSpace(strings.TrimPrefix(payload.TagName, "ter-v"))
-					if tag != "" {
-						return tag, nil
-					}
-				}
-			}
-		}
+	if version, err := fetchLatestVersionFromAPI(githubLatestReleaseAPI); err == nil {
+		return version, nil
 	}
-
+	if version, err := fetchLatestVersionFromAPI(sourceLatestReleaseAPI); err == nil {
+		return version, nil
+	}
 	return fetchLegacyLatestVersion()
 }
 
@@ -157,6 +149,35 @@ func fetchLegacyLatestVersion() (string, error) {
 	}
 
 	return strings.TrimSpace(string(data)), nil
+}
+
+func fetchLatestVersionFromAPI(url string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "kyma-ter-updater")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("latest release: HTTP %d", resp.StatusCode)
+	}
+
+	var payload githubLatestRelease
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&payload); err != nil {
+		return "", err
+	}
+	tag := strings.TrimSpace(strings.TrimPrefix(payload.TagName, "ter-v"))
+	if tag == "" {
+		return "", fmt.Errorf("latest release: empty tag")
+	}
+	return tag, nil
 }
 
 func downloadBinary(url, dest string) error {
