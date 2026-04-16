@@ -17,7 +17,8 @@ func New(port int, onQuit func()) *App {
 	return &App{port: port, onQuit: onQuit}
 }
 
-func openBrowser(url string) {
+// OpenBrowser launches the default browser with the given URL.
+func OpenBrowser(url string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":

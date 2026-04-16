@@ -39,7 +39,7 @@ func (a *App) onReady() {
 			select {
 			case <-mOpen.ClickedCh:
 				url := fmt.Sprintf("http://127.0.0.1:%d", a.port)
-				openBrowser(url)
+				OpenBrowser(url)
 			case <-mAutoStart.ClickedCh:
 				if mAutoStart.Checked() {
 					if err := disableAutoStart(); err != nil {

@@ -80,6 +80,100 @@ export function useTerminal({ sessionId, onExit }: UseTerminalOptions) {
 
     fitAddon.fit();
 
+    // Clipboard support: Ctrl+C (copy) and Ctrl+V (paste)
+    term.attachCustomKeyEventHandler((ev) => {
+      // Only handle keydown events
+      if (ev.type !== "keydown") return true;
+
+      const isCtrlOrCmd = ev.ctrlKey || ev.metaKey;
+
+      // Ctrl+V / Cmd+V: Paste from clipboard (text or image)
+      // We handle this manually and block xterm's default paste
+      if (isCtrlOrCmd && !ev.shiftKey && ev.key === "v") {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        // Try to read clipboard items (supports images)
+        navigator.clipboard.read().then(async (items) => {
+          for (const item of items) {
+            // Check for image types first
+            const imageType = item.types.find(t => t.startsWith("image/"));
+            if (imageType) {
+              try {
+                const blob = await item.getType(imageType);
+                const ext = imageType.split("/")[1] || "png";
+                const file = new File([blob], `clipboard_${Date.now()}.${ext}`, { type: imageType });
+                const serverPath = await api.uploadFile(file);
+                const escaped = serverPath.includes(" ") ? `'${serverPath}'` : serverPath;
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  const encoder = new TextEncoder();
+                  wsRef.current.send(encoder.encode(escaped + " "));
+                }
+              } catch {
+                // Image upload failed, ignore
+              }
+              return;
+            }
+
+            // Fall back to text
+            if (item.types.includes("text/plain")) {
+              const blob = await item.getType("text/plain");
+              const text = await blob.text();
+              if (text && wsRef.current?.readyState === WebSocket.OPEN) {
+                const encoder = new TextEncoder();
+                wsRef.current.send(encoder.encode(text));
+              }
+              return;
+            }
+          }
+        }).catch(() => {
+          // Clipboard API not supported or denied, fall back to readText
+          navigator.clipboard.readText().then((text) => {
+            if (text && wsRef.current?.readyState === WebSocket.OPEN) {
+              const encoder = new TextEncoder();
+              wsRef.current.send(encoder.encode(text));
+            }
+          }).catch(() => {});
+        });
+        return false; // Block xterm from also handling this
+      }
+
+      // Ctrl+C / Cmd+C: Copy selection to clipboard (if text is selected)
+      if (isCtrlOrCmd && !ev.shiftKey && ev.key === "c") {
+        const selection = term.getSelection();
+        if (selection) {
+          ev.preventDefault();
+          navigator.clipboard.writeText(selection).catch(() => {});
+          return false; // Prevent default (don't send SIGINT)
+        }
+        // No selection: let Ctrl+C pass through as SIGINT
+        return true;
+      }
+
+      // Ctrl+Shift+C: Always copy
+      if (isCtrlOrCmd && ev.shiftKey && ev.key === "C") {
+        ev.preventDefault();
+        const selection = term.getSelection() || "";
+        navigator.clipboard.writeText(selection).catch(() => {});
+        return false;
+      }
+
+      // Ctrl+Shift+V: Alternative paste
+      if (isCtrlOrCmd && ev.shiftKey && ev.key === "V") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        navigator.clipboard.readText().then((text) => {
+          if (text && wsRef.current?.readyState === WebSocket.OPEN) {
+            const encoder = new TextEncoder();
+            wsRef.current.send(encoder.encode(text));
+          }
+        }).catch(() => {});
+        return false;
+      }
+
+      return true; // Let other keys pass through
+    });
+
     // WebSocket connection with reconnect
     let retryDelay = 1000;
     const MAX_RETRY = 30_000;

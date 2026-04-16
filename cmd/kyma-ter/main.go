@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/sonpiaz/kyma-ter/internal/config"
 	"github.com/sonpiaz/kyma-ter/internal/db"
@@ -69,6 +70,14 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer database.Close()
 
 	srv := server.New(cfg, database, web.FrontendFS())
+
+	// Auto-open browser after a short delay to let the server start
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		url := fmt.Sprintf("http://localhost:%d", cfg.GetPort())
+		log.Printf("Opening browser at %s", url)
+		tray.OpenBrowser(url)
+	}()
 
 	if !flagNoTray && tray.Supported() {
 		// HTTP server runs in background goroutine
