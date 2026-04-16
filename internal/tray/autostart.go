@@ -7,7 +7,7 @@ import (
 	"runtime"
 )
 
-const launchdLabel = "com.sonpiaz.kyma-ter"
+const launchdLabel = "com.kyma-api.kyma-ter"
 
 func isAutoStartEnabled() bool {
 	path := autoStartPath()

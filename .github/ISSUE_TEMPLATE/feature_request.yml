@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an improvement for kyma-ter
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow gap
+      placeholder: Describe the workflow that is currently painful or unsupported.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the improvement you want to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform relevance
+      options:
+        - All platforms
+        - macOS
+        - Linux
+        - Windows
+        - Windows + WSL2

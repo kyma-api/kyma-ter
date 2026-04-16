@@ -1,12 +1,21 @@
 # Kyma Ter
 
-Kyma Ter is the local multi-agent terminal workspace in the Kyma product stack.
+Kyma Ter is the local multi-agent workspace for coding agents and shell execution.
+
+It gives you one browser-based workspace where `kyma` and normal shell sessions can run side by side on your machine.
 
 - `Kyma API` is the hosted backend platform
 - `Kyma Agent` is the `kyma` coding agent
 - `Kyma Ter` is the local workspace launched with `kyma-ter`
 
-Kyma Ter runs a local Go server, serves an embedded frontend, and lets you run Kyma Agent and shell sessions side-by-side in a browser UI.
+Links:
+
+- Website: `https://kymaapi.com/ter`
+- Docs: `https://docs.kymaapi.com/guides/kyma-ter/overview`
+- Windows setup: `https://docs.kymaapi.com/guides/windows-setup`
+- Releases: `https://github.com/kyma-api/kyma-ter/releases`
+
+Kyma Ter runs a local Go server, serves an embedded frontend, and lets you run Kyma Agent and shell sessions side by side in a browser UI.
 
 ## How It Is Distributed
 
@@ -31,13 +40,24 @@ Both methods install:
 - `kyma`
 - `kyma-ter`
 
+GitHub release assets for `kyma-ter`, including Windows binaries, are published in:
+
+- `https://github.com/kyma-api/kyma-ter/releases`
+
 ## Windows Support
 
 Current support position:
 
-- `kyma` is intended to run natively on Windows
+- `kyma` runs natively on Windows
 - `kyma-ter` is available on Windows as a beta experience
 - for the best shell-pane experience in `kyma-ter`, use WSL2
+
+Support summary:
+
+- macOS: native
+- Linux: native
+- Windows: beta
+- Windows shell panes: best with WSL2
 
 Recommended Windows setup:
 
@@ -45,6 +65,10 @@ Recommended Windows setup:
 2. run `kyma` in PowerShell or Windows Terminal
 3. run `kyma-ter`
 4. use WSL2 for shell panes inside the workspace
+
+If you want copy-paste-first instructions, use:
+
+- `https://docs.kymaapi.com/guides/windows-setup`
 
 ## What Kyma Ter Does
 
@@ -57,6 +81,13 @@ Kyma Ter is built for local, parallel terminal work:
 - keyboard shortcuts
 - local config and local persistence
 - browser UI connected over local HTTP and WebSocket routes
+
+Typical workflow:
+
+1. run `kyma-ter`
+2. open one pane for `kyma`
+3. open one pane for tests or builds
+4. open more workspaces when one grid is not enough
 
 ## Local Development
 
@@ -79,6 +110,13 @@ Useful shortcuts from the project root:
 ```bash
 make run
 make frontend
+```
+
+Validation:
+
+```bash
+go test ./...
+cd frontend && npm run build
 ```
 
 ## Architecture At A Glance
@@ -123,17 +161,20 @@ See:
 - `scripts/release.sh`
 - `../kyma-api/docs/PACKAGING-AND-DISTRIBUTION.md`
 
+## Community
+
+- Contributing: `./CONTRIBUTING.md`
+- Security: `./SECURITY.md`
+- Open-source checklist: `./OPEN-SOURCE-CHECKLIST.md`
+
 ## Docs
 
-- Kyma Ter overview: `kyma-api/docs-site/guides/kyma-ter/overview.mdx`
-- Kyma Ter quickstart: `kyma-api/docs-site/guides/kyma-ter/quickstart.mdx`
-- Kyma Ter + Kyma Agent: `kyma-api/docs-site/guides/kyma-ter/kyma-integration.mdx`
+- Kyma Ter overview: `https://docs.kymaapi.com/guides/kyma-ter/overview`
+- Kyma Ter quickstart: `https://docs.kymaapi.com/guides/kyma-ter/quickstart`
+- Kyma Ter + Kyma Agent: `https://docs.kymaapi.com/guides/kyma-ter/kyma-integration`
+- Windows setup: `https://docs.kymaapi.com/guides/windows-setup`
 
 ## Notes
 
 This repo is the runtime source of truth for Kyma Ter behavior.
 Public docs should be derived from this codebase, not the other way around.
-
-Open-source preparation checklist:
-
-- `./OPEN-SOURCE-CHECKLIST.md`

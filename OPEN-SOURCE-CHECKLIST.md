@@ -10,11 +10,11 @@ Current repo strengths:
 - the root `README.md` already explains install, Windows beta status, and local development
 - module path now uses `github.com/kyma-api/kyma-ter`
 - `LICENSE`, `CONTRIBUTING.md`, and `SECURITY.md` now exist
+- issue templates and a PR template now exist
+- the root `README.md` now links to releases, docs, and Windows setup
 
 Current repo gaps:
 
-- there are no issue templates or PR template
-- there is no explicit open-source support policy for Windows beta and WSL2
 - repo contents still include internal-looking artifacts that should be reviewed before broad public promotion
 
 ## Must-Have Before Open Source
@@ -82,13 +82,13 @@ Why this matters:
 
 ### 6. Public Support Boundary
 
-- [ ] add a short support policy section to `README.md`
-- [ ] clearly state:
+- [x] add a short support policy section to `README.md`
+- [x] clearly state:
   - macOS: native
   - Linux: native
   - Windows: beta
   - WSL2: recommended for shell panes
-- [ ] clearly state where the user-facing install flow lives: `@kyma-api/agent`
+- [x] clearly state where the user-facing install flow lives: `@kyma-api/agent`
 
 Why this matters:
 
@@ -98,9 +98,9 @@ Why this matters:
 
 ### 7. Community Workflow
 
-- [ ] add `.github/ISSUE_TEMPLATE/bug_report.yml`
-- [ ] add `.github/ISSUE_TEMPLATE/feature_request.yml`
-- [ ] add `.github/pull_request_template.md`
+- [x] add `.github/ISSUE_TEMPLATE/bug_report.yml`
+- [x] add `.github/ISSUE_TEMPLATE/feature_request.yml`
+- [x] add `.github/pull_request_template.md`
 
 Suggested issue template sections:
 
@@ -112,10 +112,10 @@ Suggested issue template sections:
 
 ### 8. Better Root README
 
-- [ ] add one strong product definition near the top
+- [x] add one strong product definition near the top
 - [ ] add a screenshot or GIF of the real workspace
 - [ ] add a short “Why Kyma Ter exists” section
-- [ ] add direct links to:
+- [x] add direct links to:
   - releases
   - docs
   - Windows setup
