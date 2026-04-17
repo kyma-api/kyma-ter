@@ -89,11 +89,14 @@ func writePowerShellWrapper(cmd *exec.Cmd) (string, error) {
 		if !ok || key == "" {
 			continue
 		}
-		b.WriteString("$env:")
-		b.WriteString(key)
-		b.WriteString(" = ")
+		// Skip env var names with characters that PowerShell's $env:NAME
+		// syntax cannot parse (e.g. "ProgramFiles(x86)"). Use the
+		// [Environment]::SetEnvironmentVariable call instead for safety.
+		b.WriteString("[Environment]::SetEnvironmentVariable(")
+		b.WriteString(psLiteral(key))
+		b.WriteString(", ")
 		b.WriteString(psLiteral(value))
-		b.WriteString("\n")
+		b.WriteString(", 'Process')\n")
 	}
 	b.WriteString("& ")
 	b.WriteString(psLiteral(cmd.Path))
