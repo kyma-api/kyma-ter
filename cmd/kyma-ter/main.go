@@ -154,11 +154,17 @@ func handleExistingInstance(port int, url string) (bool, error) {
 
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/health", port))
-	if err != nil {
+	if err != nil || resp.StatusCode != 200 {
+		if resp != nil {
+			resp.Body.Close()
+		}
 		return false, fmt.Errorf("port %d is in use by another process. Quit it first, or start kyma-ter on a different port with --port", port)
 	}
 	defer resp.Body.Close()
 
+	// Any 200 on /api/v1/health is assumed to be kyma-ter — the path is
+	// unique enough that a collision is extremely unlikely. Older versions
+	// (<=0.1.9) don't advertise "service" in the body, so we can't rely on it.
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 	var envelope struct {
 		Success bool `json:"success"`
@@ -169,9 +175,6 @@ func handleExistingInstance(port int, url string) (bool, error) {
 		} `json:"data"`
 	}
 	_ = json.Unmarshal(body, &envelope)
-	if envelope.Data.Service != "kyma-ter" {
-		return false, fmt.Errorf("port %d is in use by another process. Quit it first, or start kyma-ter on a different port with --port", port)
-	}
 
 	existing := envelope.Data.Version
 	if existing == "" {
