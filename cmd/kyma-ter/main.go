@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
@@ -75,7 +78,17 @@ func runServe(cmd *cobra.Command, args []string) error {
 	defer database.Close()
 
 	srv := server.New(cfg, database, web.FrontendFS())
+	srv.Version = Version
 	dashboardURL := fmt.Sprintf("http://127.0.0.1:%d", cfg.GetPort())
+
+	// If another kyma-ter is already running on this port, just open the
+	// dashboard and exit cleanly. Users running `kyma-ter` twice (or launching
+	// it while autostart is active) should land on the UI, not a port-bind error.
+	if handled, err := handleExistingInstance(cfg.GetPort(), dashboardURL); err != nil {
+		return err
+	} else if handled {
+		return nil
+	}
 
 	if !flagNoBrowser {
 		go openDashboardWhenReady(cfg.GetPort(), dashboardURL)
@@ -124,6 +137,51 @@ func openDashboardWhenReady(port int, url string) {
 		time.Sleep(200 * time.Millisecond)
 	}
 	log.Printf("kyma-ter: server did not become ready in time; skipping browser launch")
+}
+
+// handleExistingInstance checks whether another kyma-ter is already bound to
+// the target port. If yes, we open the dashboard in the browser and return
+// handled=true so the caller exits cleanly — starting a second server would
+// just fail with "address already in use" and confuse non-technical users.
+// If the port is held by a non-kyma-ter process, we return a clear error.
+func handleExistingInstance(port int, url string) (bool, error) {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond)
+	if err != nil {
+		return false, nil
+	}
+	conn.Close()
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/api/v1/health", port))
+	if err != nil {
+		return false, fmt.Errorf("port %d is in use by another process. Quit it first, or start kyma-ter on a different port with --port", port)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+	var envelope struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Service string `json:"service"`
+			Version string `json:"version"`
+			Status  string `json:"status"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(body, &envelope)
+	if envelope.Data.Service != "kyma-ter" {
+		return false, fmt.Errorf("port %d is in use by another process. Quit it first, or start kyma-ter on a different port with --port", port)
+	}
+
+	existing := envelope.Data.Version
+	if existing == "" {
+		existing = "unknown"
+	}
+	log.Printf("kyma-ter already running (v%s) · opening dashboard: %s", existing, url)
+	if !flagNoBrowser {
+		openBrowser(url)
+	}
+	return true, nil
 }
 
 func openBrowser(url string) {

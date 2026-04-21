@@ -30,6 +30,7 @@ type Server struct {
 	events     *wsbridge.EventBroadcaster
 	router     *mux.Router
 	frontendFS fs.FS // embedded frontend, nil in dev mode
+	Version    string
 }
 
 func New(cfg *config.Config, database *db.DB, frontendFS ...fs.FS) *Server {
@@ -676,7 +677,11 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 // ── Handlers: Health ──────────────────────────────────────────────────────
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, map[string]string{"status": "ok"})
+	writeJSON(w, map[string]string{
+		"status":  "ok",
+		"service": "kyma-ter",
+		"version": s.Version,
+	})
 }
 
 // ── Handlers: Sessions ────────────────────────────────────────────────────
